@@ -637,7 +637,13 @@ impl<'a> ResolveVisitor<'a> {
         };
 
         if let Some((type_name, def)) = result {
-            let ty = if matches!(def, Definition { kind: DefinitionKind::Message(_), .. }) {
+            let ty = if matches!(
+                def,
+                Definition {
+                    kind: DefinitionKind::Message(_),
+                    ..
+                }
+            ) {
                 field_descriptor_proto::Type::Message
             } else {
                 field_descriptor_proto::Type::Enum
@@ -808,7 +814,13 @@ fn unescape_c_escape_string(s: &str) -> Result<Bytes, &'static str> {
     Ok(dst.into())
 }
 
-fn set_file_type_name(file: &mut FileDescriptorProto, path: &[i32], tag: i32, type_name: String, ty: field_descriptor_proto::Type) {
+fn set_file_type_name(
+    file: &mut FileDescriptorProto,
+    path: &[i32],
+    tag: i32,
+    type_name: String,
+    ty: field_descriptor_proto::Type,
+) {
     match path[0] {
         tag::file::MESSAGE_TYPE => {
             let message = &mut file.message_type[path[1] as usize];
@@ -834,7 +846,13 @@ fn set_file_type_name(file: &mut FileDescriptorProto, path: &[i32], tag: i32, ty
     }
 }
 
-fn set_message_type_name(message: &mut DescriptorProto, path: &[i32], tag: i32, type_name: String, ty: field_descriptor_proto::Type) {
+fn set_message_type_name(
+    message: &mut DescriptorProto,
+    path: &[i32],
+    tag: i32,
+    type_name: String,
+    ty: field_descriptor_proto::Type,
+) {
     match path[0] {
         tag::message::FIELD => {
             debug_assert_eq!(path.len(), 2);
@@ -854,14 +872,19 @@ fn set_message_type_name(message: &mut DescriptorProto, path: &[i32], tag: i32, 
     }
 }
 
-fn set_field_type_name(field: &mut FieldDescriptorProto, tag: i32, type_name: String, ty: field_descriptor_proto::Type) {
+fn set_field_type_name(
+    field: &mut FieldDescriptorProto,
+    tag: i32,
+    type_name: String,
+    ty: field_descriptor_proto::Type,
+) {
     match tag {
         tag::field::TYPE_NAME => {
             field.type_name = Some(type_name);
             if field.r#type() != field_descriptor_proto::Type::Group {
                 field.set_type(ty);
             }
-        },
+        }
         tag::field::EXTENDEE => field.extendee = Some(type_name),
         p => panic!("unknown path element {}", p),
     }

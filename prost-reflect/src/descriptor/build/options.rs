@@ -36,6 +36,7 @@ impl DescriptorPool {
             pool: self,
             errors: Vec::new(),
             options: Vec::new(),
+            locations: Vec::new(),
         };
         visit(offsets, files, &mut visitor);
 
@@ -50,6 +51,17 @@ impl DescriptorPool {
             set_file_option(file, &path, &encoded);
         }
 
+        for (file, from, to) in visitor.locations {
+            let file = &mut inner.files[file as usize].raw;
+            if let Some(source_code_info) = &mut file.source_code_info {
+                for location in &mut source_code_info.location {
+                    if location.path.starts_with(&from) {
+                        location.path.splice(..from.len(), to.iter().copied());
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 }
@@ -58,6 +70,8 @@ struct OptionsVisitor<'a> {
     pool: &'a mut DescriptorPool,
     errors: Vec<DescriptorErrorKind>,
     options: Vec<(FileIndex, Box<[i32]>, Vec<u8>)>,
+    #[allow(clippy::type_complexity)]
+    locations: Vec<(FileIndex, Box<[i32]>, Box<[i32]>)>,
 }
 
 impl<'a> Visitor for OptionsVisitor<'a> {
@@ -296,7 +310,9 @@ impl<'a> OptionsVisitor<'a> {
         };
 
         for (i, option) in uninterpreted.iter().enumerate() {
-            if let Err(err) = self.set_option(&mut message, option, file, path, &[i as i32]) {
+            if let Err(err) =
+                self.set_option(&mut message, option, file, join_path(path, &[i as i32]))
+            {
                 self.errors.push(err);
             }
         }
@@ -308,13 +324,14 @@ impl<'a> OptionsVisitor<'a> {
 
     #[allow(clippy::result_large_err)]
     fn set_option(
-        &self,
+        &mut self,
         mut message: &mut DynamicMessage,
         option: &UninterpretedOption,
         file: FileIndex,
-        path1: &[i32],
-        path2: &[i32],
+        path: Box<[i32]>,
     ) -> Result<(), DescriptorErrorKind> {
+        let mut resolved_path = Vec::with_capacity(option.name.len());
+
         for (i, part) in option.name.iter().enumerate() {
             let is_last = i == option.name.len() - 1;
 
@@ -322,6 +339,8 @@ impl<'a> OptionsVisitor<'a> {
             if part.is_extension {
                 match desc.get_extension_by_full_name(&part.name_part) {
                     Some(extension_desc) => {
+                        resolved_path.push(extension_desc.number() as i32);
+
                         if is_last {
                             if extension_desc.cardinality() != Cardinality::Repeated
                                 && message.has_extension(&extension_desc)
@@ -332,7 +351,7 @@ impl<'a> OptionsVisitor<'a> {
                                         &self.pool.inner.files,
                                         "found here",
                                         file,
-                                        join_path(path1, path2),
+                                        path,
                                     ),
                                 });
                             } else {
@@ -341,8 +360,7 @@ impl<'a> OptionsVisitor<'a> {
                                     &extension_desc,
                                     option,
                                     file,
-                                    path1,
-                                    path2,
+                                    &path,
                                 )?;
                             }
                         } else if let Value::Message(submessage) =
@@ -355,30 +373,22 @@ impl<'a> OptionsVisitor<'a> {
                                 ty: fmt_field_ty(&extension_desc),
                                 value: fmt_value(option),
                                 is_last,
-                                found: Label::new(
-                                    &self.pool.inner.files,
-                                    "found here",
-                                    file,
-                                    join_path(path1, path2),
-                                ),
+                                found: Label::new(&self.pool.inner.files, "found here", file, path),
                             });
                         }
                     }
                     None => {
                         return Err(DescriptorErrorKind::OptionNotFound {
                             name: fmt_option_name(&option.name[..i + 1]),
-                            found: Label::new(
-                                &self.pool.inner.files,
-                                "found here",
-                                file,
-                                join_path(path1, path2),
-                            ),
+                            found: Label::new(&self.pool.inner.files, "found here", file, path),
                         })
                     }
                 }
             } else {
                 match desc.get_field_by_name(&part.name_part) {
                     Some(field_desc) => {
+                        resolved_path.push(field_desc.number() as i32);
+
                         if is_last {
                             if field_desc.cardinality() != Cardinality::Repeated
                                 && message.has_field(&field_desc)
@@ -389,7 +399,7 @@ impl<'a> OptionsVisitor<'a> {
                                         &self.pool.inner.files,
                                         "found here",
                                         file,
-                                        join_path(path1, path2),
+                                        path,
                                     ),
                                 });
                             } else {
@@ -398,8 +408,7 @@ impl<'a> OptionsVisitor<'a> {
                                     &field_desc,
                                     option,
                                     file,
-                                    path1,
-                                    path2,
+                                    &path,
                                 )?;
                             }
                         } else if let Value::Message(submessage) =
@@ -412,29 +421,21 @@ impl<'a> OptionsVisitor<'a> {
                                 ty: fmt_field_ty(&field_desc),
                                 value: fmt_value(option),
                                 is_last,
-                                found: Label::new(
-                                    &self.pool.inner.files,
-                                    "found here",
-                                    file,
-                                    join_path(path1, path2),
-                                ),
+                                found: Label::new(&self.pool.inner.files, "found here", file, path),
                             });
                         }
                     }
                     None => {
                         return Err(DescriptorErrorKind::OptionNotFound {
                             name: fmt_option_name(&option.name[..i + 1]),
-                            found: Label::new(
-                                &self.pool.inner.files,
-                                "found here",
-                                file,
-                                join_path(path1, path2),
-                            ),
+                            found: Label::new(&self.pool.inner.files, "found here", file, path),
                         })
                     }
                 }
             }
         }
+
+        self.locations.push((file, path, resolved_path.into()));
 
         Ok(())
     }
@@ -446,20 +447,14 @@ impl<'a> OptionsVisitor<'a> {
         desc: &impl FieldDescriptorLike,
         option: &UninterpretedOption,
         file: FileIndex,
-        path1: &[i32],
-        path2: &[i32],
+        path: &[i32],
     ) -> Result<(), DescriptorErrorKind> {
         let err = |()| DescriptorErrorKind::InvalidOptionType {
             name: fmt_option_name(&option.name),
             ty: fmt_field_ty(desc),
             value: fmt_value(option),
             is_last: true,
-            found: Label::new(
-                &self.pool.inner.files,
-                "found here",
-                file,
-                join_path(path1, path2),
-            ),
+            found: Label::new(&self.pool.inner.files, "found here", file, path.into()),
         };
 
         match value {
@@ -481,7 +476,7 @@ impl<'a> OptionsVisitor<'a> {
             }
             Value::List(value) => {
                 let mut entry = Value::default_value(&desc.kind());
-                self.set_field_value(&mut entry, desc, option, file, path1, path2)?;
+                self.set_field_value(&mut entry, desc, option, file, path)?;
                 value.push(entry);
             }
             Value::Map(value) => {
