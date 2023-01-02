@@ -637,11 +637,17 @@ impl<'a> ResolveVisitor<'a> {
         };
 
         if let Some((type_name, def)) = result {
+            let ty = if matches!(def, Definition { kind: DefinitionKind::Message(_), .. }) {
+                field_descriptor_proto::Type::Message
+            } else {
+                field_descriptor_proto::Type::Enum
+            };
             set_file_type_name(
                 &mut self.pool.files[file as usize].raw,
                 path,
                 tag,
                 type_name.into_owned(),
+                ty,
             );
             Some(def)
         } else {
@@ -802,11 +808,11 @@ fn unescape_c_escape_string(s: &str) -> Result<Bytes, &'static str> {
     Ok(dst.into())
 }
 
-fn set_file_type_name(file: &mut FileDescriptorProto, path: &[i32], tag: i32, type_name: String) {
+fn set_file_type_name(file: &mut FileDescriptorProto, path: &[i32], tag: i32, type_name: String, ty: field_descriptor_proto::Type) {
     match path[0] {
         tag::file::MESSAGE_TYPE => {
             let message = &mut file.message_type[path[1] as usize];
-            set_message_type_name(message, &path[2..], tag, type_name);
+            set_message_type_name(message, &path[2..], tag, type_name, ty);
         }
         tag::file::SERVICE => {
             debug_assert_eq!(path.len(), 4);
@@ -822,35 +828,40 @@ fn set_file_type_name(file: &mut FileDescriptorProto, path: &[i32], tag: i32, ty
         tag::file::EXTENSION => {
             debug_assert_eq!(path.len(), 2);
             let extension = &mut file.extension[path[1] as usize];
-            set_field_type_name(extension, tag, type_name);
+            set_field_type_name(extension, tag, type_name, ty);
         }
         p => panic!("unknown path element {}", p),
     }
 }
 
-fn set_message_type_name(message: &mut DescriptorProto, path: &[i32], tag: i32, type_name: String) {
+fn set_message_type_name(message: &mut DescriptorProto, path: &[i32], tag: i32, type_name: String, ty: field_descriptor_proto::Type) {
     match path[0] {
         tag::message::FIELD => {
             debug_assert_eq!(path.len(), 2);
             let field = &mut message.field[path[1] as usize];
-            set_field_type_name(field, tag, type_name);
+            set_field_type_name(field, tag, type_name, ty);
         }
         tag::message::EXTENSION => {
             debug_assert_eq!(path.len(), 2);
             let extension = &mut message.extension[path[1] as usize];
-            set_field_type_name(extension, tag, type_name);
+            set_field_type_name(extension, tag, type_name, ty);
         }
         tag::message::NESTED_TYPE => {
             let nested_message = &mut message.nested_type[path[1] as usize];
-            set_message_type_name(nested_message, &path[2..], tag, type_name);
+            set_message_type_name(nested_message, &path[2..], tag, type_name, ty);
         }
         p => panic!("unknown path element {}", p),
     }
 }
 
-fn set_field_type_name(field: &mut FieldDescriptorProto, tag: i32, type_name: String) {
+fn set_field_type_name(field: &mut FieldDescriptorProto, tag: i32, type_name: String, ty: field_descriptor_proto::Type) {
     match tag {
-        tag::field::TYPE_NAME => field.type_name = Some(type_name),
+        tag::field::TYPE_NAME => {
+            field.type_name = Some(type_name);
+            if field.r#type() != field_descriptor_proto::Type::Group {
+                field.set_type(ty);
+            }
+        },
         tag::field::EXTENDEE => field.extendee = Some(type_name),
         p => panic!("unknown path element {}", p),
     }
