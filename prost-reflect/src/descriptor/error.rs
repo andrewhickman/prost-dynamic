@@ -1,13 +1,15 @@
 use std::fmt;
 
+use miette::NamedSource;
+
 use crate::descriptor::{FileDescriptorInner, FileIndex};
 
 /// An error that may occur while creating a [`DescriptorPool`][crate::DescriptorPool].
 #[derive(Debug)]
 pub struct DescriptorError {
-    inner: Box<[DescriptorErrorKind]>,
+    errors: Box<[DescriptorErrorKind]>,
     #[cfg(feature = "miette")]
-    source: Option<String>,
+    source: Option<NamedSource>,
 }
 
 #[derive(Debug)]
@@ -105,7 +107,7 @@ impl DescriptorError {
     pub(super) fn new(errors: Vec<DescriptorErrorKind>) -> DescriptorError {
         debug_assert!(!errors.is_empty());
         DescriptorError {
-            inner: errors.into(),
+            errors: errors.into(),
             #[cfg(feature = "miette")]
             source: None,
         }
@@ -148,8 +150,8 @@ impl DescriptorError {
         if let Some(file) = self.file() {
             let file = file.to_owned();
 
-            self.source = Some(source.into());
-            for error in self.inner.as_mut() {
+            self.source = Some(NamedSource::new(&file, source.to_owned()));
+            for error in self.errors.as_mut() {
                 error.add_source_code(&file, source);
             }
         }
@@ -157,7 +159,7 @@ impl DescriptorError {
     }
 
     fn first(&self) -> &DescriptorErrorKind {
-        &self.inner[0]
+        &self.errors[0]
     }
 }
 
@@ -204,9 +206,9 @@ impl miette::Diagnostic for DescriptorError {
     }
 
     fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn miette::Diagnostic> + 'a>> {
-        if self.inner.len() > 1 {
+        if self.errors.len() > 1 {
             Some(Box::new(
-                self.inner
+                self.errors
                     .iter()
                     .map(|e| e as &dyn miette::Diagnostic)
                     .skip(1),

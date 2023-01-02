@@ -310,9 +310,12 @@ impl<'a> OptionsVisitor<'a> {
         };
 
         for (i, option) in uninterpreted.iter().enumerate() {
-            if let Err(err) =
-                self.set_option(&mut message, option, file, join_path(path, &[tag::UNINTERPRETED_OPTION, i as i32]))
-            {
+            if let Err(err) = self.set_option(
+                &mut message,
+                option,
+                file,
+                join_path(path, &[tag::UNINTERPRETED_OPTION, i as i32]),
+            ) {
                 self.errors.push(err);
             }
         }
