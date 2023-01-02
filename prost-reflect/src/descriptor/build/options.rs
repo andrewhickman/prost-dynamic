@@ -312,7 +312,7 @@ impl<'a> OptionsVisitor<'a> {
 
         for (i, option) in uninterpreted.iter().enumerate() {
             if let Err(err) =
-                self.set_option(&mut message, option, file, join_path(path, &[i as i32]))
+                self.set_option(&mut message, option, file, join_path(path, &[tag::UNINTERPRETED_OPTION, i as i32]))
             {
                 self.errors.push(err);
             }
@@ -331,7 +331,8 @@ impl<'a> OptionsVisitor<'a> {
         file: FileIndex,
         path: Box<[i32]>,
     ) -> Result<(), DescriptorErrorKind> {
-        let mut resolved_path = Vec::with_capacity(option.name.len());
+        let mut resolved_path = Vec::with_capacity(path.len() - 2 + option.name.len());
+        resolved_path.extend_from_slice(&path[..path.len() - 2]);
 
         for (i, part) in option.name.iter().enumerate() {
             let is_last = i == option.name.len() - 1;
