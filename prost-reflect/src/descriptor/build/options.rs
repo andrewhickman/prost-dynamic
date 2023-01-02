@@ -301,6 +301,8 @@ impl<'a> OptionsVisitor<'a> {
             }
         }
 
+        message.clear_field_by_number(tag::UNINTERPRETED_OPTION as u32);
+
         message.encode_to_vec()
     }
 
