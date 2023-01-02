@@ -52,6 +52,7 @@ impl DescriptorPool {
         }
 
         for (file, from, to) in visitor.locations {
+            println!("replace {:?} with {:?}", from, to);
             let file = &mut inner.files[file as usize].raw;
             if let Some(source_code_info) = &mut file.source_code_info {
                 for location in &mut source_code_info.location {
