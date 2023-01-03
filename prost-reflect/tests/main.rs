@@ -72,53 +72,9 @@ check_err!(name_conflict_with_import);
 check_err!(name_conflict_package1);
 check_err!(name_conflict_package2);
 check_ok!(name_conflict_package3);
-
-/*
-#[test]
-fn name_conflict_field_camel_case() {
-    assert_eq!(
-        check_err(
-            "syntax = 'proto3';
-
-            message Foo {\
-                optional int32 foo_bar = 1;
-                optional int32 foobar = 2;
-            }"
-        ),
-        vec![DuplicateCamelCaseFieldName {
-            first_name: "foo_bar".to_owned(),
-            first: Some(SourceSpan::from(60..67)),
-            second_name: "foobar".to_owned(),
-            second: Some(SourceSpan::from(104..110)),
-        }]
-    );
-    assert_eq!(
-        check_err(
-            "syntax = 'proto3';
-
-            message Foo {\
-                optional int32 foo = 1;
-                optional int32 FOO = 2;
-            }"
-        ),
-        vec![DuplicateCamelCaseFieldName {
-            first_name: "foo".to_owned(),
-            first: Some(SourceSpan::from(60..63)),
-            second_name: "FOO".to_owned(),
-            second: Some(SourceSpan::from(100..103)),
-        }]
-    );
-    assert_yaml_snapshot!(check_ok(
-        "syntax = 'proto2';
-
-        message Foo {\
-            optional int32 foo = 1;
-            optional int32 FOO = 2;
-        }"
-    ));
-}
-*/
-
+check_err!(name_conflict_field_camel_case1);
+check_err!(name_conflict_field_camel_case2);
+check_ok!(name_conflict_field_camel_case3);
 check_err!(name_conflict1);
 check_err!(name_conflict2);
 check_err!(name_conflict3);

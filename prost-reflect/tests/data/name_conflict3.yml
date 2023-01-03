@@ -1,5 +1,5 @@
 file:
-- name: x.proto
+- name: test.proto
   messageType:
   - name: Foo
   enumType:

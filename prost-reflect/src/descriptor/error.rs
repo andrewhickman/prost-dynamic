@@ -45,6 +45,13 @@ pub(super) enum DescriptorErrorKind {
         first: Label,
         second: Label,
     },
+    DuplicateFieldCamelCaseName {
+        first_name: String,
+        second_name: String,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        first: Label,
+        second: Label,
+    },
     NameNotFound {
         name: String,
         found: Label,
@@ -233,6 +240,7 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::DuplicateName { second, .. } => Some(second),
             DescriptorErrorKind::DuplicateFieldNumber { second, .. } => Some(second),
             DescriptorErrorKind::DuplicateFieldJsonName { second, .. } => Some(second),
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { second, .. } => Some(second),
             DescriptorErrorKind::NameNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidType { found, .. } => Some(found),
             DescriptorErrorKind::InvalidFieldDefault { found, .. } => Some(found),
@@ -272,6 +280,10 @@ impl DescriptorErrorKind {
                 first.resolve_span(file, source);
                 second.resolve_span(file, source);
             }
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { first, second, .. } => {
+                first.resolve_span(file, source);
+                second.resolve_span(file, source);
+            },
             DescriptorErrorKind::NameNotFound { found, .. } => {
                 found.resolve_span(file, source);
             }
@@ -358,6 +370,9 @@ impl fmt::Display for DescriptorErrorKind {
             DescriptorErrorKind::DuplicateFieldJsonName { name, .. } => {
                 write!(f, "a field with JSON name '{}' is already defined", name)
             }
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { first_name, second_name, .. } => {
+                write!(f, "camel-case name of field '{first_name}' conflicts with field '{second_name}'")
+            },
             DescriptorErrorKind::NameNotFound { name, .. } => {
                 write!(f, "name '{}' is not defined", name)
             }
@@ -423,6 +438,7 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::DuplicateName { .. } => None,
             DescriptorErrorKind::DuplicateFieldNumber { .. } => None,
             DescriptorErrorKind::DuplicateFieldJsonName { .. } => None,
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { .. } => None,
             DescriptorErrorKind::NameNotFound { .. } => None,
             DescriptorErrorKind::InvalidType { .. } => None,
             DescriptorErrorKind::InvalidFieldDefault { .. } => None,
@@ -462,6 +478,10 @@ impl miette::Diagnostic for DescriptorErrorKind {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());
             }
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { first, second,  .. } => {
+                spans.extend(first.to_span());
+                spans.extend(second.to_span());
+            },
             DescriptorErrorKind::NameNotFound { found, .. } => {
                 spans.extend(found.to_span());
             }

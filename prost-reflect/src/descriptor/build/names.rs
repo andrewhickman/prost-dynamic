@@ -133,6 +133,10 @@ impl<'a> Visitor for NameVisitor<'a> {
             extensions: Vec::new(),
             parent,
         });
+
+        if self.pool.files[file as usize].syntax != Syntax::Proto2 {
+            self.check_message_field_camel_case_names(file, path, message);
+        }
     }
 
     fn visit_field(
@@ -346,4 +350,40 @@ impl<'a> NameVisitor<'a> {
             }
         }
     }
+
+    fn check_message_field_camel_case_names(
+        &mut self,
+        file: FileIndex,
+        path: &[i32],
+        message: &DescriptorProto,
+    ) {
+        let mut names: HashMap<String, (&str, i32)> = HashMap::new();
+        for (index, field) in message.field.iter().enumerate() {
+            let name = field.name();
+            let index = index as i32;
+
+            match names.entry(to_lower_without_underscores(name)) {
+                hash_map::Entry::Occupied(entry) => {
+                    self.errors.push(DescriptorErrorKind::DuplicateFieldCamelCaseName {
+                        first_name: entry.get().0.to_owned(),
+                        first: Label::new(&self.pool.files, "first defined here", file, join_path(path, &[tag::message::FIELD, entry.get().1])),
+                        second_name: name.to_owned(),
+                        second: Label::new(&self.pool.files, "defined again here", file, join_path(path, &[tag::message::FIELD, index])),
+                    })
+                }
+                hash_map::Entry::Vacant(entry) => {
+                    entry.insert((name, index));
+                }
+            }
+        }
+    }
+}
+
+fn to_lower_without_underscores(name: &str) -> String {
+    name.chars()
+        .filter_map(|ch| match ch {
+            '_' => None,
+            _ => Some(ch.to_ascii_lowercase()),
+        })
+        .collect()
 }
