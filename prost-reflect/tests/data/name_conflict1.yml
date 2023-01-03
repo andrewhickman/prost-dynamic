@@ -1,0 +1,5 @@
+file:
+- name: x.proto
+  messageType:
+  - name: Foo
+  - name: Foo

@@ -3,11 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use insta::assert_yaml_snapshot;
 use miette::JSONReportHandler;
 use prost::Message;
 use prost_reflect::{DescriptorError, DescriptorPool, DynamicMessage, ReflectMessage};
 use prost_types::FileDescriptorSet;
-use similar_asserts::assert_serde_eq;
 
 fn test_data_dir() -> PathBuf {
     PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/data")
@@ -35,9 +35,7 @@ fn check_ok(name: &str) {
     )
     .unwrap();
 
-    let expected = read_file_descriptor_set(format!("{}.ok.yml", name));
-
-    assert_serde_eq!(actual: actual, expected: expected)
+    assert_yaml_snapshot!(name, actual);
 }
 
 fn check_err(name: &str) {
@@ -46,74 +44,36 @@ fn check_err(name: &str) {
     JSONReportHandler::new()
         .render_report(&mut actual_json, &actual_err)
         .unwrap();
+    let actual = serde_json::from_str::<serde_json::Value>(&actual_json).unwrap();
 
-    let actual =
-        serde_yaml::to_value(serde_json::from_str::<serde_json::Value>(&actual_json).unwrap())
-            .unwrap();
-    let expected: serde_yaml::Value = serde_yaml::from_slice(
-        &fs::read(test_data_dir().join(format!("{}.err.yml", name))).unwrap(),
-    )
-    .unwrap();
-
-    assert_serde_eq!(actual: actual, expected: expected)
+    assert_yaml_snapshot!(name, actual);
 }
 
-#[test]
-fn name_conflict_in_imported_files() {
-    check_err("name_conflict_in_imported_files");
+macro_rules! check_ok {
+    ($name:ident) => {
+        #[test]
+        fn $name() {
+            check_ok(stringify!($name));
+        }
+    };
 }
+
+macro_rules! check_err {
+    ($name:ident) => {
+        #[test]
+        fn $name() {
+            check_err(stringify!($name));
+        }
+    };
+}
+
+check_err!(name_conflict_in_imported_files);
+check_err!(name_conflict_with_import);
+check_err!(name_conflict_package1);
+check_err!(name_conflict_package2);
+check_ok!(name_conflict_package3);
 
 /*
-#[test]
-fn name_conflict_with_import() {
-    assert_eq!(
-        check_with_imports(vec![
-            ("dep.proto", "message Foo {}"),
-            ("root.proto", r#"import "dep.proto"; message Foo {}"#),
-        ])
-        .unwrap_err(),
-        vec![DuplicateName(DuplicateNameError {
-            name: "Foo".to_owned(),
-            first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(SourceSpan::from(28..31)),
-        })]
-    );
-}
-
-#[test]
-fn name_conflict_package() {
-    assert_eq!(
-        check_with_imports(vec![
-            ("dep.proto", "package foo;"),
-            ("root.proto", r#"import "dep.proto"; message foo {}"#),
-        ])
-        .unwrap_err(),
-        vec![DuplicateName(DuplicateNameError {
-            name: "foo".to_owned(),
-            first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(SourceSpan::from(28..31)),
-        })]
-    );
-    assert_eq!(
-        check_with_imports(vec![
-            ("dep.proto", "message foo {}"),
-            ("root.proto", r#"import "dep.proto"; package foo;"#),
-        ])
-        .unwrap_err(),
-        vec![DuplicateName(DuplicateNameError {
-            name: "foo".to_owned(),
-            first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(SourceSpan::from(20..32)),
-        })]
-    );
-    assert_yaml_snapshot!(check_with_imports(vec![
-        ("dep.proto", "package foo;"),
-        ("root.proto", r#"import "dep.proto"; package foo;"#),
-    ])
-    .unwrap()
-    .transcode_to_dynamic());
-}
-
 #[test]
 fn name_conflict_field_camel_case() {
     assert_eq!(
@@ -157,43 +117,13 @@ fn name_conflict_field_camel_case() {
         }"
     ));
 }
+*/
 
-#[test]
-fn name_conflict() {
-    assert_eq!(
-        check_err("message Foo {} message Foo {}"),
-        vec![DuplicateName(DuplicateNameError {
-            name: "Foo".to_owned(),
-            first: NameLocation::Root(SourceSpan::from(8..11)),
-            second: NameLocation::Root(SourceSpan::from(23..26)),
-        })]
-    );
-    assert_eq!(
-        check_err("message Foo {} enum Foo {}"),
-        vec![DuplicateName(DuplicateNameError {
-            name: "Foo".to_owned(),
-            first: NameLocation::Root(SourceSpan::from(8..11)),
-            second: NameLocation::Root(SourceSpan::from(20..23)),
-        })]
-    );
-    assert_eq!(
-        check_err("message Foo {} service Foo {}"),
-        vec![DuplicateName(DuplicateNameError {
-            name: "Foo".to_owned(),
-            first: NameLocation::Root(SourceSpan::from(8..11)),
-            second: NameLocation::Root(SourceSpan::from(23..26)),
-        })]
-    );
-    assert_eq!(
-        check_err("message Foo {} enum Bar { Foo = 1; }"),
-        vec![DuplicateName(DuplicateNameError {
-            name: "Foo".to_owned(),
-            first: NameLocation::Root(SourceSpan::from(8..11)),
-            second: NameLocation::Root(SourceSpan::from(26..29)),
-        })]
-    );
-}
+check_err!(name_conflict1);
+check_err!(name_conflict2);
+check_err!(name_conflict3);
 
+/*
 #[test]
 fn invalid_message_number() {
     assert_eq!(
