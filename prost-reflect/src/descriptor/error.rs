@@ -525,7 +525,7 @@ impl Label {
         file: FileIndex,
         path: Box<[i32]>,
     ) -> Self {
-        let file = &files[file as usize].prost;
+        let file = &files[file as usize].raw;
 
         let span = file
             .source_code_info
