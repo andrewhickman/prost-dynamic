@@ -1,7 +1,5 @@
 use std::fmt;
 
-use miette::NamedSource;
-
 use crate::descriptor::{FileDescriptorInner, FileIndex};
 
 /// An error that may occur while creating a [`DescriptorPool`][crate::DescriptorPool].
@@ -9,7 +7,7 @@ use crate::descriptor::{FileDescriptorInner, FileIndex};
 pub struct DescriptorError {
     errors: Box<[DescriptorErrorKind]>,
     #[cfg(feature = "miette")]
-    source: Option<NamedSource>,
+    source: Option<miette::NamedSource>,
 }
 
 #[derive(Debug)]
@@ -150,7 +148,7 @@ impl DescriptorError {
         if let Some(file) = self.file() {
             let file = file.to_owned();
 
-            self.source = Some(NamedSource::new(&file, source.to_owned()));
+            self.source = Some(miette::NamedSource::new(&file, source.to_owned()));
             for error in self.errors.as_mut() {
                 error.add_source_code(&file, source);
             }

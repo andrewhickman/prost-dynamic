@@ -1,0 +1,5 @@
+causes: []
+labels: []
+message: "name 'Foo' is defined twice"
+related: []
+severity: error
