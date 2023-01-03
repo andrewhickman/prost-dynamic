@@ -78,148 +78,16 @@ check_ok!(name_conflict_field_camel_case3);
 check_err!(name_conflict1);
 check_err!(name_conflict2);
 check_err!(name_conflict3);
+check_err!(invalid_message_number1);
+check_err!(invalid_message_number2);
+check_err!(generate_map_entry_message_name_conflict);
+check_err!(generate_group_message_name_conflict);
+check_err!(generate_synthetic_oneof_name_conflict);
+check_err!(invalid_service_type1);
+check_err!(invalid_service_type2);
+check_err!(invalid_service_type3);
 
 /*
-#[test]
-fn invalid_message_number() {
-    assert_eq!(
-        check_err("message Foo { optional int32 i = 19000; }"),
-        vec![ReservedMessageNumber {
-            span: Some(SourceSpan::from(33..38))
-        }]
-    );
-    assert_eq!(
-        check_err("message Foo { optional int32 i = 19999; }"),
-        vec![ReservedMessageNumber {
-            span: Some(SourceSpan::from(33..38))
-        }]
-    );
-}
-
-#[test]
-fn generate_map_entry_message_name_conflict() {
-    assert_eq!(
-        check_err(
-            "message Foo {\
-                map<uint32, bytes> baz = 1;
-
-                enum BazEntry {
-                    ZERO = 0;
-                }
-            }"
-        ),
-        vec![DuplicateName(DuplicateNameError {
-            name: "Foo.BazEntry".to_owned(),
-            first: NameLocation::Unknown,
-            second: NameLocation::Root(SourceSpan::from(63..71)),
-        })]
-    );
-}
-
-#[test]
-fn generate_group_message_name_conflict() {
-    assert_eq!(
-        check_err(
-            "\
-            message Foo {\
-                optional group Baz = 1 {}
-
-                enum Baz {
-                    ZERO = 0;
-                }
-            }"
-        ),
-        vec![DuplicateName(DuplicateNameError {
-            name: "Foo.Baz".to_owned(),
-            first: NameLocation::Root(SourceSpan::from(28..31)),
-            second: NameLocation::Root(SourceSpan::from(61..64)),
-        })],
-    );
-}
-
-#[test]
-fn generate_synthetic_oneof_name_conflict() {
-    assert_eq!(
-        check_err(
-            "\
-            syntax = 'proto3';
-
-            message Foo {
-                optional fixed64 val = 1;
-
-                message _val {}
-            }"
-        ),
-        vec![DuplicateName(DuplicateNameError {
-            name: "Foo._val".to_owned(),
-            first: NameLocation::Unknown,
-            second: NameLocation::Root(SourceSpan::from(113..117)),
-        })],
-    );
-}
-
-#[test]
-fn invalid_service_type() {
-    // use enum/service/oneof etc
-    assert_eq!(
-        check_err(
-            "\
-            syntax = 'proto3';
-
-            enum Enum {
-                ZERO = 0;
-            }
-            message Message {}
-
-            service Service {
-                rpc rpc(.Enum) returns (.Message);
-            }"
-        ),
-        vec![InvalidMethodTypeName {
-            name: ".Enum".to_owned(),
-            kind: "input",
-            span: Some(SourceSpan::from(170..175)),
-        }],
-    );
-    assert_eq!(
-        check_err(
-            "\
-            syntax = 'proto3';
-
-            enum Enum {
-                ZERO = 0;
-            }
-            message Message {}
-
-            service Service {
-                rpc rpc(.Message) returns (.Enum);
-            }"
-        ),
-        vec![InvalidMethodTypeName {
-            name: ".Enum".to_owned(),
-            kind: "output",
-            span: Some(SourceSpan::from(189..194)),
-        }],
-    );
-    assert_eq!(
-        check_err(
-            "\
-            syntax = 'proto3';
-
-            message Message {}
-
-            service Service {
-                rpc rpc(.Message) returns (.Service);
-            }"
-        ),
-        vec![InvalidMethodTypeName {
-            name: ".Service".to_owned(),
-            kind: "output",
-            span: Some(SourceSpan::from(125..133)),
-        }],
-    );
-}
-
 #[test]
 fn name_resolution() {
     assert_eq!(

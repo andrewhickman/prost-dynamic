@@ -4,7 +4,7 @@ expression: actual
 ---
 causes: []
 labels: []
-message: "name 'Foo' is defined twice"
+message: "name 'Foo' is already defined in file 'dep.proto'"
 related: []
 severity: error
 

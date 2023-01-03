@@ -1,6 +1,8 @@
-use std::fmt;
+use std::{fmt, ops::Range};
 
 use crate::descriptor::{FileDescriptorInner, FileIndex};
+
+use super::{RESERVED_MESSAGE_FIELD_NUMBERS, VALID_MESSAGE_FIELD_NUMBERS};
 
 /// An error that may occur while creating a [`DescriptorPool`][crate::DescriptorPool].
 #[derive(Debug)]
@@ -51,6 +53,21 @@ pub(super) enum DescriptorErrorKind {
         #[cfg_attr(not(feature = "miette"), allow(dead_code))]
         first: Label,
         second: Label,
+    },
+    InvalidFieldNumber {
+        number: i32,
+        found: Label,
+    },
+    FieldNumberInReservedRange {
+        number: i32,
+        range: Range<i32>,
+        defined: Label,
+        found: Label,
+    },
+    ExtensionNumberOutOfRange {
+        number: i32,
+        message: String,
+        found: Label,
     },
     NameNotFound {
         name: String,
@@ -241,6 +258,9 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::DuplicateFieldNumber { second, .. } => Some(second),
             DescriptorErrorKind::DuplicateFieldJsonName { second, .. } => Some(second),
             DescriptorErrorKind::DuplicateFieldCamelCaseName { second, .. } => Some(second),
+            DescriptorErrorKind::InvalidFieldNumber { found, .. } => Some(found),
+            DescriptorErrorKind::FieldNumberInReservedRange { found, .. } => Some(found),
+            DescriptorErrorKind::ExtensionNumberOutOfRange { found, .. } => Some(found),
             DescriptorErrorKind::NameNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidType { found, .. } => Some(found),
             DescriptorErrorKind::InvalidFieldDefault { found, .. } => Some(found),
@@ -283,7 +303,17 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::DuplicateFieldCamelCaseName { first, second, .. } => {
                 first.resolve_span(file, source);
                 second.resolve_span(file, source);
-            },
+            }
+            DescriptorErrorKind::InvalidFieldNumber { found, .. } => {
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::FieldNumberInReservedRange { defined, found, .. } => {
+                defined.resolve_span(file, source);
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::ExtensionNumberOutOfRange { found, .. } => {
+                found.resolve_span(file, source);
+            }
             DescriptorErrorKind::NameNotFound { found, .. } => {
                 found.resolve_span(file, source);
             }
@@ -359,7 +389,7 @@ impl fmt::Display for DescriptorErrorKind {
                 } else {
                     write!(
                         f,
-                        "name '{}' is already defined file '{}'",
+                        "name '{}' is already defined in file '{}'",
                         name, first.file
                     )
                 }
@@ -370,9 +400,37 @@ impl fmt::Display for DescriptorErrorKind {
             DescriptorErrorKind::DuplicateFieldJsonName { name, .. } => {
                 write!(f, "a field with JSON name '{}' is already defined", name)
             }
-            DescriptorErrorKind::DuplicateFieldCamelCaseName { first_name, second_name, .. } => {
-                write!(f, "camel-case name of field '{first_name}' conflicts with field '{second_name}'")
-            },
+            DescriptorErrorKind::DuplicateFieldCamelCaseName {
+                first_name,
+                second_name,
+                ..
+            } => {
+                write!(
+                    f,
+                    "camel-case name of field '{first_name}' conflicts with field '{second_name}'"
+                )
+            }
+            DescriptorErrorKind::InvalidFieldNumber { number, .. } => {
+                write!(f, "invalid field number '{}'", number)
+            }
+            DescriptorErrorKind::FieldNumberInReservedRange { number, range, .. } => {
+                write!(
+                    f,
+                    "field number '{}' conflicts with reserved range '{} to {}'",
+                    number,
+                    range.start,
+                    range.end - 1
+                )
+            }
+            DescriptorErrorKind::ExtensionNumberOutOfRange {
+                number, message, ..
+            } => {
+                write!(
+                    f,
+                    "message '{}' does not define '{}' as an extension number",
+                    message, number
+                )
+            }
             DescriptorErrorKind::NameNotFound { name, .. } => {
                 write!(f, "name '{}' is not defined", name)
             }
@@ -450,6 +508,25 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::InvalidOptionType { .. } => None,
             DescriptorErrorKind::DuplicateOption { .. } => None,
             DescriptorErrorKind::DecodeFileDescriptorSet { .. } => None,
+            DescriptorErrorKind::InvalidFieldNumber { number, .. } => {
+                if !VALID_MESSAGE_FIELD_NUMBERS.contains(number) {
+                    Some(Box::new(format!(
+                        "message numbers must be between {} and {}",
+                        VALID_MESSAGE_FIELD_NUMBERS.start,
+                        VALID_MESSAGE_FIELD_NUMBERS.end - 1
+                    )))
+                } else if RESERVED_MESSAGE_FIELD_NUMBERS.contains(number) {
+                    Some(Box::new(format!(
+                        "message numbers {} to {} are reserved",
+                        RESERVED_MESSAGE_FIELD_NUMBERS.start,
+                        RESERVED_MESSAGE_FIELD_NUMBERS.end - 1
+                    )))
+                } else {
+                    None
+                }
+            }
+            DescriptorErrorKind::FieldNumberInReservedRange { .. } => None,
+            DescriptorErrorKind::ExtensionNumberOutOfRange { .. } => None,
         }
     }
 
@@ -478,11 +555,21 @@ impl miette::Diagnostic for DescriptorErrorKind {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());
             }
-            DescriptorErrorKind::DuplicateFieldCamelCaseName { first, second,  .. } => {
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { first, second, .. } => {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());
-            },
+            }
             DescriptorErrorKind::NameNotFound { found, .. } => {
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::InvalidFieldNumber { found, .. } => {
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::FieldNumberInReservedRange { defined, found, .. } => {
+                spans.extend(defined.to_span());
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::ExtensionNumberOutOfRange { found, .. } => {
                 spans.extend(found.to_span());
             }
             DescriptorErrorKind::InvalidType { found, defined, .. } => {

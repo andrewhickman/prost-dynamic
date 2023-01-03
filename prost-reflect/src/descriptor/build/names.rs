@@ -240,7 +240,7 @@ impl<'a> Visitor for NameVisitor<'a> {
 
         if enum_.value.is_empty() {
             self.errors.push(DescriptorErrorKind::EmptyEnum {
-                found: Label::new(&self.pool.files, "found here", file, path.into()),
+                found: Label::new(&self.pool.files, "enum defined here", file, path.into()),
             });
         }
 
@@ -364,12 +364,23 @@ impl<'a> NameVisitor<'a> {
 
             match names.entry(to_lower_without_underscores(name)) {
                 hash_map::Entry::Occupied(entry) => {
-                    self.errors.push(DescriptorErrorKind::DuplicateFieldCamelCaseName {
-                        first_name: entry.get().0.to_owned(),
-                        first: Label::new(&self.pool.files, "first defined here", file, join_path(path, &[tag::message::FIELD, entry.get().1])),
-                        second_name: name.to_owned(),
-                        second: Label::new(&self.pool.files, "defined again here", file, join_path(path, &[tag::message::FIELD, index])),
-                    })
+                    self.errors
+                        .push(DescriptorErrorKind::DuplicateFieldCamelCaseName {
+                            first_name: entry.get().0.to_owned(),
+                            first: Label::new(
+                                &self.pool.files,
+                                "first defined here",
+                                file,
+                                join_path(path, &[tag::message::FIELD, entry.get().1]),
+                            ),
+                            second_name: name.to_owned(),
+                            second: Label::new(
+                                &self.pool.files,
+                                "defined again here",
+                                file,
+                                join_path(path, &[tag::message::FIELD, index]),
+                            ),
+                        })
                 }
                 hash_map::Entry::Vacant(entry) => {
                     entry.insert((name, index));

@@ -21,7 +21,7 @@ use prost_types::{
 use crate::{
     descriptor::{
         error::DescriptorErrorKind,
-        tag, to_index,
+        find_message_proto, tag, to_index,
         types::{self, Options},
         Definition, DefinitionKind, DescriptorIndex, EnumDescriptorInner, EnumValueDescriptorInner,
         ExtensionDescriptorInner, FieldDescriptorInner, FileDescriptorInner, KindIndex,
@@ -1848,27 +1848,6 @@ fn find_message_proto_prost<'a>(
     debug_assert_eq!(path.len() % 2, 0);
 
     let mut message: Option<&'a DescriptorProto> = None;
-    for part in path.chunks(2) {
-        match part[0] {
-            tag::file::MESSAGE_TYPE => message = Some(&file.message_type[part[1] as usize]),
-            tag::message::NESTED_TYPE => {
-                message = Some(&message.unwrap().nested_type[part[1] as usize])
-            }
-            _ => panic!("invalid message path"),
-        }
-    }
-
-    message.unwrap()
-}
-
-fn find_message_proto<'a>(
-    file: &'a types::FileDescriptorProto,
-    path: &[i32],
-) -> &'a types::DescriptorProto {
-    debug_assert_ne!(path.len(), 0);
-    debug_assert_eq!(path.len() % 2, 0);
-
-    let mut message: Option<&'a types::DescriptorProto> = None;
     for part in path.chunks(2) {
         match part[0] {
             tag::file::MESSAGE_TYPE => message = Some(&file.message_type[part[1] as usize]),

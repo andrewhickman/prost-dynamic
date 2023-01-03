@@ -10,7 +10,7 @@ use crate::{
             DescriptorPoolOffsets,
         },
         error::{DescriptorError, DescriptorErrorKind, Label},
-        tag, to_index,
+        find_message_proto, tag, to_index,
         types::{
             field_descriptor_proto, DescriptorProto, EnumValueDescriptorProto,
             FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto,
@@ -19,7 +19,8 @@ use crate::{
         Definition, DefinitionKind, DescriptorPoolInner, EnumIndex, EnumValueIndex,
         ExtensionDescriptorInner, ExtensionIndex, FieldDescriptorInner, FieldIndex, FileIndex,
         Identity, KindIndex, MessageIndex, MethodDescriptorInner, MethodIndex, OneofIndex,
-        ServiceDescriptorInner, ServiceIndex,
+        ServiceDescriptorInner, ServiceIndex, RESERVED_MESSAGE_FIELD_NUMBERS,
+        VALID_MESSAGE_FIELD_NUMBERS,
     },
     Cardinality, Syntax, Value,
 };
@@ -94,6 +95,8 @@ impl<'a> Visitor for ResolveVisitor<'a> {
         );
 
         let syntax = self.pool.files[file as usize].syntax;
+
+        self.check_field_number(message, field, file, path);
 
         let cardinality = match field.label() {
             field_descriptor_proto::Label::Optional => Cardinality::Optional,
@@ -351,6 +354,8 @@ impl<'a> Visitor for ResolveVisitor<'a> {
         );
         if let Some(extendee) = extendee {
             self.pool.messages[extendee as usize].extensions.push(index);
+
+            self.check_field_number(extendee, extension, file, path);
         }
 
         let syntax = self.pool.files[file as usize].syntax;
@@ -401,6 +406,74 @@ impl<'a> Visitor for ResolveVisitor<'a> {
 }
 
 impl<'a> ResolveVisitor<'a> {
+    fn check_field_number(
+        &mut self,
+        message: MessageIndex,
+        field: &FieldDescriptorProto,
+        file: FileIndex,
+        path: &[i32],
+    ) {
+        if !VALID_MESSAGE_FIELD_NUMBERS.contains(&field.number())
+            || RESERVED_MESSAGE_FIELD_NUMBERS.contains(&field.number())
+        {
+            self.errors.push(DescriptorErrorKind::InvalidFieldNumber {
+                number: field.number(),
+                found: Label::new(
+                    &self.pool.files,
+                    "defined here",
+                    file,
+                    join_path(path, &[tag::field::NUMBER]),
+                ),
+            });
+        }
+
+        let message = &self.pool.messages[message as usize];
+        let message_proto = find_message_proto(
+            &self.pool.files[message.id.file as usize].raw,
+            &message.id.path,
+        );
+        for (i, range) in message_proto.reserved_range.iter().enumerate() {
+            if range.start() <= field.number() && field.number() < range.end() {
+                self.errors
+                    .push(DescriptorErrorKind::FieldNumberInReservedRange {
+                        number: field.number(),
+                        range: range.start()..range.end(),
+                        defined: Label::new(
+                            &self.pool.files,
+                            "range defined here",
+                            message.id.file,
+                            join_path(&message.id.path, &[tag::message::RESERVED_RANGE, i as i32]),
+                        ),
+                        found: Label::new(
+                            &self.pool.files,
+                            "defined here",
+                            file,
+                            join_path(path, &[tag::field::NUMBER]),
+                        ),
+                    });
+            }
+
+            if field.extendee.is_some()
+                && !message_proto
+                    .extension_range
+                    .iter()
+                    .any(|range| range.start() <= field.number() && field.number() < range.end())
+            {
+                self.errors
+                    .push(DescriptorErrorKind::ExtensionNumberOutOfRange {
+                        number: field.number(),
+                        message: message.id.full_name().to_owned(),
+                        found: Label::new(
+                            &self.pool.files,
+                            "defined here",
+                            file,
+                            join_path(path, &[tag::field::NUMBER]),
+                        ),
+                    });
+            }
+        }
+    }
+
     fn resolve_field_type(
         &mut self,
         ty: Option<i32>,

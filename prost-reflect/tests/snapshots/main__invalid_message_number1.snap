@@ -3,8 +3,9 @@ source: prost-reflect/tests/main.rs
 expression: actual
 ---
 causes: []
+help: message numbers 19000 to 19999 are reserved
 labels: []
-message: "name 'Foo' is already defined in file 'dep1.proto'"
+message: "invalid field number '19000'"
 related: []
 severity: error
 
