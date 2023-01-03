@@ -333,6 +333,16 @@ impl DescriptorPool {
         .encode(&mut buf)
     }
 
+    /// Encodes the files contained within this [`DescriptorPool`] to a newly allocated buffer.
+    ///
+    /// The encoded message is equivalent to a [`FileDescriptorSet`], however also includes
+    /// any extension options that were defined.
+    pub fn encode_to_vec(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.encode(&mut buf).expect("vec should have capacity");
+        buf
+    }
+
     /// Gets an iterator over the services defined in these protobuf files.
     pub fn services(&self) -> impl ExactSizeIterator<Item = ServiceDescriptor> + '_ {
         indices(&self.inner.services).map(|index| ServiceDescriptor {
@@ -574,6 +584,16 @@ impl FileDescriptor {
     {
         let mut buf = buf;
         self.inner().raw.encode(&mut buf)
+    }
+
+    /// Encodes this file descriptor to a newly allocated buffer.
+    ///
+    /// The encoded message is equivalent to a [`FileDescriptorProto`], however also includes
+    /// any extension options that were defined.
+    pub fn encode_to_vec(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.encode(&mut buf).expect("vec should have capacity");
+        buf
     }
 
     /// Decodes the options defined for this [`FileDescriptor`], including any extension options.
