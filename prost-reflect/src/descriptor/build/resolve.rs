@@ -1,11 +1,9 @@
-use std::{borrow::Cow, collections::HashMap};
-
 use prost::bytes::Bytes;
 
 use crate::{
     descriptor::{
         build::{
-            join_path,
+            join_path, resolve_name,
             visit::{visit, Visitor},
             DescriptorPoolOffsets,
         },
@@ -757,17 +755,7 @@ impl<'a> ResolveVisitor<'a> {
         path: &[i32],
         tag: i32,
     ) -> Option<&Definition> {
-        let result = match name.strip_prefix('.') {
-            Some(full_name) => self
-                .pool
-                .names
-                .get(full_name)
-                .map(|def| (Cow::Borrowed(name), def)),
-            None => Self::resolve_relative_name(&self.pool.names, scope, name)
-                .map(|(resolved_name, def)| (Cow::Owned(resolved_name), def)),
-        };
-
-        if let Some((type_name, def)) = result {
+        if let Some((type_name, def)) = resolve_name(&self.pool.names, scope, name) {
             let ty = if matches!(
                 def,
                 Definition {
@@ -790,35 +778,6 @@ impl<'a> ResolveVisitor<'a> {
         } else {
             None
         }
-    }
-
-    fn resolve_relative_name<'b>(
-        names: &'b HashMap<Box<str>, Definition>,
-        scope: &str,
-        relative_name: &str,
-    ) -> Option<(String, &'b Definition)> {
-        let mut buf = format!(".{}.{}", scope, relative_name);
-
-        if let Some(def) = names.get(&buf[1..]) {
-            return Some((buf, def));
-        }
-
-        for (i, _) in scope.rmatch_indices('.') {
-            buf.truncate(i + 2);
-            buf.push_str(relative_name);
-
-            if let Some(def) = names.get(&buf[1..]) {
-                return Some((buf, def));
-            }
-        }
-
-        buf.truncate(1);
-        buf.push_str(relative_name);
-        if let Some(def) = names.get(&buf[1..]) {
-            return Some((buf, def));
-        }
-
-        None
     }
 
     fn add_missing_required_field_error(&mut self, file: FileIndex, path: Box<[i32]>) {

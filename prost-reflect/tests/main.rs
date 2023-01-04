@@ -174,8 +174,7 @@ check_ok!(option_resolution2, add_wkt: true);
 check_ok!(option_resolution3, add_wkt: true);
 check_ok!(option_resolution4, add_wkt: true);
 check_ok!(option_resolution5, add_wkt: true);
-// TODO need option name resolution
-// check_ok!(option_resolution6, add_wkt: true);
+check_ok!(option_resolution6, add_wkt: true);
 check_ok!(option_resolution7, add_wkt: true);
 check_ok!(option_resolution8, add_wkt: true);
 check_ok!(option_resolution9, add_wkt: true);
@@ -189,3 +188,5 @@ check_ok!(option_resolution16, add_wkt: true);
 check_ok!(option_resolution17, add_wkt: true);
 check_err!(option_resolution18, add_wkt: true);
 check_ok!(option_resolution19);
+check_ok!(option_resolution20, add_wkt: true);
+check_ok!(option_resolution21, add_wkt: true);

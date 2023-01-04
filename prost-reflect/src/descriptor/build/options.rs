@@ -16,14 +16,17 @@ use crate::{
             FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto,
             Options, ServiceDescriptorProto, UninterpretedOption,
         },
-        EnumIndex, EnumValueIndex, ExtensionIndex, FieldIndex, FileIndex, MessageIndex,
-        MethodIndex, OneofIndex, ServiceIndex, MAP_ENTRY_KEY_NUMBER, MAP_ENTRY_VALUE_NUMBER,
+        Definition, DefinitionKind, EnumIndex, EnumValueIndex, ExtensionIndex, FieldIndex,
+        FileIndex, MessageIndex, MethodIndex, OneofIndex, ServiceIndex, MAP_ENTRY_KEY_NUMBER,
+        MAP_ENTRY_VALUE_NUMBER,
     },
     dynamic::{fmt_string, FieldDescriptorLike},
     reflect::WELL_KNOWN_TYPES,
-    Cardinality, DescriptorError, DescriptorPool, DynamicMessage, EnumDescriptor, MapKey,
-    MessageDescriptor, ReflectMessage, Value,
+    Cardinality, DescriptorError, DescriptorPool, DynamicMessage, EnumDescriptor,
+    ExtensionDescriptor, MapKey, MessageDescriptor, ReflectMessage, Value,
 };
+
+use super::resolve_name;
 
 impl DescriptorPool {
     pub(super) fn resolve_options<'a>(
@@ -82,6 +85,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.FileOptions",
                 options,
                 &options.value.uninterpreted_option,
+                file.package(),
                 index,
                 &path,
             );
@@ -92,7 +96,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_message(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: Option<MessageIndex>,
         _: MessageIndex,
@@ -104,6 +108,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.MessageOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -124,6 +129,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                     "google.protobuf.ExtensionRangeOptions",
                     options,
                     &options.value.uninterpreted_option,
+                    full_name,
                     file,
                     &path,
                 );
@@ -135,7 +141,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_field(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: MessageIndex,
         _: FieldIndex,
@@ -147,6 +153,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.FieldOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -157,7 +164,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_oneof(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: MessageIndex,
         _: OneofIndex,
@@ -169,6 +176,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.OneofOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -179,7 +187,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_service(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: ServiceIndex,
         service: &ServiceDescriptorProto,
@@ -190,6 +198,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.ServiceOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -200,7 +209,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_method(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: ServiceIndex,
         _: MethodIndex,
@@ -212,6 +221,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.MethodOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -222,7 +232,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_enum(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: Option<MessageIndex>,
         _: EnumIndex,
@@ -234,6 +244,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.EnumOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -244,7 +255,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_enum_value(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: EnumIndex,
         _: EnumValueIndex,
@@ -256,6 +267,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.EnumValueOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -266,7 +278,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
     fn visit_extension(
         &mut self,
         path: &[i32],
-        _: &str,
+        full_name: &str,
         file: FileIndex,
         _: Option<MessageIndex>,
         _: ExtensionIndex,
@@ -278,6 +290,7 @@ impl<'a> Visitor for OptionsVisitor<'a> {
                 "google.protobuf.FieldOptions",
                 options,
                 &options.value.uninterpreted_option,
+                full_name,
                 file,
                 &path,
             );
@@ -292,6 +305,7 @@ impl<'a> OptionsVisitor<'a> {
         desc_name: &str,
         options: &Options<T>,
         uninterpreted: &[UninterpretedOption],
+        scope: &str,
         file: FileIndex,
         path: &[i32],
     ) -> Vec<u8> {
@@ -313,6 +327,7 @@ impl<'a> OptionsVisitor<'a> {
             if let Err(err) = self.set_option(
                 &mut message,
                 option,
+                scope,
                 file,
                 join_path(path, &[tag::UNINTERPRETED_OPTION, i as i32]),
             ) {
@@ -330,6 +345,7 @@ impl<'a> OptionsVisitor<'a> {
         &mut self,
         mut message: &mut DynamicMessage,
         option: &UninterpretedOption,
+        scope: &str,
         file: FileIndex,
         path: Box<[i32]>,
     ) -> Result<(), DescriptorErrorKind> {
@@ -341,7 +357,7 @@ impl<'a> OptionsVisitor<'a> {
 
             let desc = message.descriptor();
             if part.is_extension {
-                match desc.get_extension_by_full_name(&part.name_part) {
+                match self.find_extension(scope, &part.name_part) {
                     Some(extension_desc) => {
                         resolved_path.push(extension_desc.number() as i32);
 
@@ -491,6 +507,22 @@ impl<'a> OptionsVisitor<'a> {
         }
 
         Ok(())
+    }
+
+    fn find_extension(&self, scope: &str, name: &str) -> Option<ExtensionDescriptor> {
+        match resolve_name(&self.pool.inner.names, scope, name) {
+            Some((
+                _,
+                &Definition {
+                    kind: DefinitionKind::Extension(index),
+                    ..
+                },
+            )) => Some(ExtensionDescriptor {
+                pool: self.pool.clone(),
+                index,
+            }),
+            _ => None,
+        }
     }
 }
 
