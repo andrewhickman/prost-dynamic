@@ -1,4 +1,7 @@
-use std::{fmt, ops::Range};
+use std::{
+    fmt,
+    ops::{Range, RangeInclusive},
+};
 
 use crate::descriptor::{FileDescriptorInner, FileIndex};
 
@@ -94,11 +97,21 @@ pub(super) enum DescriptorErrorKind {
     EmptyEnum {
         found: Label,
     },
+    InvalidProto3EnumDefault {
+        found: Label,
+    },
     DuplicateEnumNumber {
         number: i32,
         #[cfg_attr(not(feature = "miette"), allow(dead_code))]
         first: Label,
         second: Label,
+    },
+    EnumNumberInReservedRange {
+        number: i32,
+        range: RangeInclusive<i32>,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        defined: Label,
+        found: Label,
     },
     OptionNotFound {
         name: String,
@@ -272,7 +285,9 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::InvalidType { found, .. } => Some(found),
             DescriptorErrorKind::InvalidFieldDefault { found, .. } => Some(found),
             DescriptorErrorKind::EmptyEnum { found } => Some(found),
+            DescriptorErrorKind::InvalidProto3EnumDefault { found } => Some(found),
             DescriptorErrorKind::DuplicateEnumNumber { second, .. } => Some(second),
+            DescriptorErrorKind::EnumNumberInReservedRange { found, .. } => Some(found),
             DescriptorErrorKind::OptionNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidOptionType { found, .. } => Some(found),
             DescriptorErrorKind::DuplicateOption { found, .. } => Some(found),
@@ -338,9 +353,16 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::EmptyEnum { found } => {
                 found.resolve_span(file, source);
             }
+            DescriptorErrorKind::InvalidProto3EnumDefault { found } => {
+                found.resolve_span(file, source);
+            },
             DescriptorErrorKind::DuplicateEnumNumber { first, second, .. } => {
                 first.resolve_span(file, source);
                 second.resolve_span(file, source);
+            }
+            DescriptorErrorKind::EnumNumberInReservedRange { defined, found, .. } => {
+                found.resolve_span(file, source);
+                defined.resolve_span(file, source);
             }
             DescriptorErrorKind::OptionNotFound { found, .. } => {
                 found.resolve_span(file, source);
@@ -463,8 +485,20 @@ impl fmt::Display for DescriptorErrorKind {
             DescriptorErrorKind::EmptyEnum { .. } => {
                 write!(f, "enums must have at least one value")
             }
+            DescriptorErrorKind::InvalidProto3EnumDefault { .. } => {
+                write!(f, "the first value for proto3 enums must be 0")
+            },
             DescriptorErrorKind::DuplicateEnumNumber { number, .. } => {
                 write!(f, "enum number '{}' has already been used", number)
+            }
+            DescriptorErrorKind::EnumNumberInReservedRange { number, range, .. } => {
+                write!(
+                    f,
+                    "enum number '{}' conflicts with reserved range '{} to {}'",
+                    number,
+                    range.start(),
+                    range.end()
+                )
             }
             DescriptorErrorKind::OptionNotFound { name, .. } => {
                 write!(f, "option field '{}' is not defined", name)
@@ -517,19 +551,6 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::InvalidOneofIndex => None,
             DescriptorErrorKind::DuplicateName { .. } => None,
             DescriptorErrorKind::DuplicateFieldNumber { .. } => None,
-            DescriptorErrorKind::DuplicateFieldJsonName { .. } => None,
-            DescriptorErrorKind::DuplicateFieldCamelCaseName { .. } => None,
-            DescriptorErrorKind::NameNotFound { .. } => None,
-            DescriptorErrorKind::InvalidType { .. } => None,
-            DescriptorErrorKind::InvalidFieldDefault { .. } => None,
-            DescriptorErrorKind::EmptyEnum { .. } => None,
-            DescriptorErrorKind::DuplicateEnumNumber { .. } => Some(Box::new(
-                "set the 'allow_alias' option allow re-using enum numbers",
-            )),
-            DescriptorErrorKind::OptionNotFound { .. } => None,
-            DescriptorErrorKind::InvalidOptionType { .. } => None,
-            DescriptorErrorKind::DuplicateOption { .. } => None,
-            DescriptorErrorKind::DecodeFileDescriptorSet { .. } => None,
             DescriptorErrorKind::InvalidFieldNumber { number, .. } => {
                 if !VALID_MESSAGE_FIELD_NUMBERS.contains(number) {
                     Some(Box::new(format!(
@@ -549,6 +570,21 @@ impl miette::Diagnostic for DescriptorErrorKind {
             }
             DescriptorErrorKind::FieldNumberInReservedRange { .. } => None,
             DescriptorErrorKind::FieldNumberInExtensionRange { .. } => None,
+            DescriptorErrorKind::DuplicateFieldJsonName { .. } => None,
+            DescriptorErrorKind::DuplicateFieldCamelCaseName { .. } => None,
+            DescriptorErrorKind::NameNotFound { .. } => None,
+            DescriptorErrorKind::InvalidType { .. } => None,
+            DescriptorErrorKind::InvalidFieldDefault { .. } => None,
+            DescriptorErrorKind::EmptyEnum { .. } => None,
+            DescriptorErrorKind::InvalidProto3EnumDefault { .. } => None,
+            DescriptorErrorKind::DuplicateEnumNumber { .. } => Some(Box::new(
+                "set the 'allow_alias' option allow re-using enum numbers",
+            )),
+            DescriptorErrorKind::EnumNumberInReservedRange { .. } => None,
+            DescriptorErrorKind::OptionNotFound { .. } => None,
+            DescriptorErrorKind::InvalidOptionType { .. } => None,
+            DescriptorErrorKind::DuplicateOption { .. } => None,
+            DescriptorErrorKind::DecodeFileDescriptorSet { .. } => None,
             DescriptorErrorKind::ExtensionNumberOutOfRange { .. } => None,
         }
     }
@@ -609,9 +645,16 @@ impl miette::Diagnostic for DescriptorErrorKind {
             DescriptorErrorKind::EmptyEnum { found } => {
                 spans.extend(found.to_span());
             }
+            DescriptorErrorKind::InvalidProto3EnumDefault { found, .. } => {
+                spans.extend(found.to_span());
+            },
             DescriptorErrorKind::DuplicateEnumNumber { first, second, .. } => {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());
+            }
+            DescriptorErrorKind::EnumNumberInReservedRange { defined, found, .. } => {
+                spans.extend(found.to_span());
+                spans.extend(defined.to_span());
             }
             DescriptorErrorKind::OptionNotFound { found, .. } => {
                 spans.extend(found.to_span());

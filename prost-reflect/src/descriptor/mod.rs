@@ -7,7 +7,7 @@ mod tests;
 mod types;
 
 pub use self::error::DescriptorError;
-use self::types::DescriptorProto;
+use self::types::{DescriptorProto, EnumDescriptorProto};
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -418,6 +418,19 @@ fn find_message_proto<'a>(file: &'a FileDescriptorProto, path: &[i32]) -> &'a De
     }
 
     message.unwrap()
+}
+
+fn find_enum_proto<'a>(file: &'a FileDescriptorProto, path: &[i32]) -> &'a EnumDescriptorProto {
+    debug_assert_ne!(path.len(), 0);
+    debug_assert_eq!(path.len() % 2, 0);
+    if path.len() == 2 {
+        debug_assert_eq!(path[0], tag::file::ENUM_TYPE);
+        &file.enum_type[path[1] as usize]
+    } else {
+        let message = find_message_proto(file, &path[..path.len() - 2]);
+        debug_assert_eq!(path[path.len() - 2], tag::message::ENUM_TYPE);
+        &message.enum_type[path[path.len() - 1] as usize]
+    }
 }
 
 #[test]

@@ -21,7 +21,7 @@ use prost_types::{
 use crate::{
     descriptor::{
         error::DescriptorErrorKind,
-        find_message_proto, tag, to_index,
+        find_enum_proto, find_message_proto, tag, to_index,
         types::{self, Options},
         Definition, DefinitionKind, DescriptorIndex, EnumDescriptorInner, EnumValueDescriptorInner,
         ExtensionDescriptorInner, FieldDescriptorInner, FileDescriptorInner, KindIndex,
@@ -1393,18 +1393,7 @@ impl EnumDescriptor {
     }
 
     fn raw(&self) -> &types::EnumDescriptorProto {
-        let file = self.raw_file();
-        let path = self.path();
-        debug_assert_ne!(path.len(), 0);
-        debug_assert_eq!(path.len() % 2, 0);
-        if path.len() == 2 {
-            debug_assert_eq!(path[0], tag::file::ENUM_TYPE);
-            &file.enum_type[path[1] as usize]
-        } else {
-            let message = find_message_proto(file, &path[..path.len() - 2]);
-            debug_assert_eq!(path[path.len() - 2], tag::message::ENUM_TYPE);
-            &message.enum_type[path[path.len() - 1] as usize]
-        }
+        find_enum_proto(self.raw_file(), self.path())
     }
 
     fn raw_file(&self) -> &types::FileDescriptorProto {

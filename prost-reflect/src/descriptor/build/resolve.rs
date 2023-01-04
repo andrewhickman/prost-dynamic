@@ -10,7 +10,7 @@ use crate::{
             DescriptorPoolOffsets,
         },
         error::{DescriptorError, DescriptorErrorKind, Label},
-        find_message_proto, tag, to_index,
+        find_enum_proto, find_message_proto, tag, to_index,
         types::{
             field_descriptor_proto, DescriptorProto, EnumValueDescriptorProto,
             FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto,
@@ -277,7 +277,10 @@ impl<'a> Visitor for ResolveVisitor<'a> {
         index: EnumValueIndex,
         value: &EnumValueDescriptorProto,
     ) {
+        self.check_enum_number(enum_index, value, file, path);
+
         let enum_ = &mut self.pool.enums[enum_index as usize];
+
         let value_numbers_index = match enum_
             .value_numbers
             .binary_search_by(|(number, _)| number.cmp(&value.number()))
@@ -485,6 +488,39 @@ impl<'a> ResolveVisitor<'a> {
                     .push(DescriptorErrorKind::ExtensionNumberOutOfRange {
                         number: field.number(),
                         message: message.id.full_name().to_owned(),
+                        found: Label::new(
+                            &self.pool.files,
+                            "defined here",
+                            file,
+                            join_path(path, &[tag::field::NUMBER]),
+                        ),
+                    });
+            }
+        }
+    }
+
+    fn check_enum_number(
+        &mut self,
+        enum_: EnumIndex,
+        value: &EnumValueDescriptorProto,
+        file: FileIndex,
+        path: &[i32],
+    ) {
+        let enum_ = &self.pool.enums[enum_ as usize];
+        let enum_proto =
+            find_enum_proto(&self.pool.files[enum_.id.file as usize].raw, &enum_.id.path);
+        for (i, range) in enum_proto.reserved_range.iter().enumerate() {
+            if range.start() <= value.number() && value.number() <= range.end() {
+                self.errors
+                    .push(DescriptorErrorKind::EnumNumberInReservedRange {
+                        number: value.number(),
+                        range: range.start()..=range.end(),
+                        defined: Label::new(
+                            &self.pool.files,
+                            "reserved range defined here",
+                            enum_.id.file,
+                            join_path(&enum_.id.path, &[tag::enum_::RESERVED_RANGE, i as i32]),
+                        ),
                         found: Label::new(
                             &self.pool.files,
                             "defined here",
