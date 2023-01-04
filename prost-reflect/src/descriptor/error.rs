@@ -519,8 +519,8 @@ impl fmt::Display for DescriptorErrorKind {
                 } else {
                     write!(
                         f,
-                        "cannot set field for option '{} 'value of type '{}'",
-                        ty, name
+                        "cannot set field for option '{}' value of type '{}'",
+                        name, ty
                     )
                 }
             }

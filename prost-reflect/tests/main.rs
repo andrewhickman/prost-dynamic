@@ -65,8 +65,8 @@ fn check_ok(name: &str, add_wkt: bool) {
     assert_yaml_snapshot!(name, actual);
 }
 
-fn check_err(name: &str) {
-    let actual_err = check(name, false).unwrap_err();
+fn check_err(name: &str, add_wkt: bool) {
+    let actual_err = check(name, add_wkt).unwrap_err();
     let mut actual_json = String::new();
     JSONReportHandler::new()
         .render_report(&mut actual_json, &actual_err)
@@ -95,7 +95,13 @@ macro_rules! check_err {
     ($name:ident) => {
         #[test]
         fn $name() {
-            check_err(stringify!($name));
+            check_err(stringify!($name), false);
+        }
+    };
+    ($name:ident, add_wkt: true) => {
+        #[test]
+        fn $name() {
+            check_err(stringify!($name), true);
         }
     };
 }
@@ -179,87 +185,7 @@ check_ok!(option_resolution12, add_wkt: true);
 check_ok!(option_resolution13, add_wkt: true);
 check_ok!(option_resolution14, add_wkt: true);
 check_ok!(option_resolution15, add_wkt: true);
-
-/*
-
-syntax = "proto2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a) = {
-    Foo : {
-    }
-};
-
-extend google.protobuf.FileOptions {
-    repeated Foo a = 1001;
-}
-
-message Foo {
-    optional group Foo = 1 {};
-}
-
-*/
-
-/*
-
-syntax = "proto2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a) = {
-    foo: 1
-};
-option (a).foo = 2;
-option (a).bar = 2;
-
-extend google.protobuf.FileOptions {
-    optional Foo a = 1001;
-}
-
-message Foo {
-    repeated int32 foo = 1;
-    optional int32 bar = 2;
-}
-
-*/
-
-/*
-
-
-foo.proto:8:8: Option field "(a)" is a repeated message. Repeated message options must be initialized using an aggregate value.
-
-syntax = "proto2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a) = {
-    foo: 1
-};
-option (a).foo = 2;
-
-extend google.protobuf.FileOptions {
-    repeated Foo a = 1001;
-}
-
-message Foo {
-    repeated int32 foo = 1;
-    optional int32 bar = 2;
-}
-
-
-*/
-
-/*
-
-syntax = "proto3";
-
-package google.protobuf;
-
-message FileOptions {
-    optional string java_outer_classname = 1;
-}
-
-option java_outer_classname = "ClassName";
-
-*/
+check_ok!(option_resolution16, add_wkt: true);
+check_ok!(option_resolution17, add_wkt: true);
+check_err!(option_resolution18, add_wkt: true);
+check_ok!(option_resolution19);
