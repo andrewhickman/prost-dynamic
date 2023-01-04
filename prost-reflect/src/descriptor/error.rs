@@ -2,8 +2,6 @@ use std::{fmt, ops::Range};
 
 use crate::descriptor::{FileDescriptorInner, FileIndex};
 
-use super::{RESERVED_MESSAGE_FIELD_NUMBERS, VALID_MESSAGE_FIELD_NUMBERS};
-
 /// An error that may occur while creating a [`DescriptorPool`][crate::DescriptorPool].
 #[derive(Debug)]
 pub struct DescriptorError {
@@ -61,6 +59,7 @@ pub(super) enum DescriptorErrorKind {
     FieldNumberInReservedRange {
         number: i32,
         range: Range<i32>,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
         defined: Label,
         found: Label,
     },
@@ -484,6 +483,8 @@ impl fmt::Display for DescriptorErrorKind {
 #[cfg_attr(docsrs, doc(cfg(feature = "miette")))]
 impl miette::Diagnostic for DescriptorErrorKind {
     fn help<'a>(&'a self) -> Option<Box<dyn fmt::Display + 'a>> {
+        use crate::descriptor::{RESERVED_MESSAGE_FIELD_NUMBERS, VALID_MESSAGE_FIELD_NUMBERS};
+
         match self {
             DescriptorErrorKind::MissingRequiredField { .. } => None,
             DescriptorErrorKind::UnknownSyntax { .. } => {
