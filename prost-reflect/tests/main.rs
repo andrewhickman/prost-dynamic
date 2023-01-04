@@ -107,54 +107,10 @@ check_ok!(enum_field_invalid_default9);
 check_err!(field_default_invalid_type1);
 check_err!(field_default_invalid_type2);
 check_err!(field_default_invalid_type3);
+check_err!(message_field_duplicate_number1);
+check_err!(message_field_duplicate_number2);
 
 /*
-#[test]
-fn message_field_duplicate_number() {
-    assert_eq!(
-        check_err(
-            r#"message Message {
-                optional int32 foo = 1;
-                optional int32 bar = 1;
-            }"#
-        ),
-        vec![DuplicateNumber(DuplicateNumberError {
-            first: resolve::NumberKind::Field {
-                name: "foo".to_owned(),
-                number: 1
-            },
-            first_span: Some(SourceSpan::from(55..56)),
-            second: resolve::NumberKind::Field {
-                name: "bar".to_owned(),
-                number: 1
-            },
-            second_span: Some(SourceSpan::from(95..96)),
-        })],
-    );
-    assert_eq!(
-        check_err(
-            r#"message Message {
-                message Nested {
-                    optional int32 foo = 1;
-                    optional int32 bar = 1;
-                }
-            }"#
-        ),
-        vec![DuplicateNumber(DuplicateNumberError {
-            first: resolve::NumberKind::Field {
-                name: "foo".to_owned(),
-                number: 1
-            },
-            first_span: Some(SourceSpan::from(92..93)),
-            second: resolve::NumberKind::Field {
-                name: "bar".to_owned(),
-                number: 1
-            },
-            second_span: Some(SourceSpan::from(136..137)),
-        })],
-    );
-}
-
 #[test]
 fn message_reserved_range_invalid() {
     assert_eq!(
