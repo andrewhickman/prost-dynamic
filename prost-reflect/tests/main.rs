@@ -190,3 +190,4 @@ check_err!(option_resolution18, add_wkt: true);
 check_ok!(option_resolution19);
 check_ok!(option_resolution20, add_wkt: true);
 check_ok!(option_resolution21, add_wkt: true);
+check_ok!(option_resolution22, add_wkt: true);
