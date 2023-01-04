@@ -3,9 +3,7 @@ source: prost-reflect/tests/main.rs
 expression: actual
 ---
 file:
-  - name: test.proto
-    package: demo
-    dependency:
+  - dependency:
       - google/protobuf/descriptor.proto
     enumType:
       - name: Foo
@@ -23,12 +21,14 @@ file:
             options:
               "[demo.len]": 2
     extension:
-      - name: len
-        extendee: ".google.protobuf.EnumValueOptions"
-        number: 50000
-        label: LABEL_OPTIONAL
-        type: TYPE_UINT32
+      - extendee: ".google.protobuf.EnumValueOptions"
         jsonName: len
+        label: LABEL_OPTIONAL
+        name: len
+        number: 50000
         proto3Optional: true
+        type: TYPE_UINT32
+    name: test.proto
+    package: demo
     syntax: proto3
 

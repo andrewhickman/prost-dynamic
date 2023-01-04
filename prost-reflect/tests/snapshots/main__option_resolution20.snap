@@ -3,27 +3,27 @@ source: prost-reflect/tests/main.rs
 expression: actual
 ---
 file:
-  - name: dep.proto
-    package: dep
-    dependency:
+  - dependency:
       - google/protobuf/descriptor.proto
     extension:
-      - name: ext
-        extendee: ".google.protobuf.FileOptions"
-        number: 1001
-        label: LABEL_REPEATED
-        type: TYPE_INT32
+      - extendee: ".google.protobuf.FileOptions"
         jsonName: ext
+        label: LABEL_REPEATED
+        name: ext
+        number: 1001
+        type: TYPE_INT32
+    name: dep.proto
     options:
       "[dep.ext]":
         - 1
         - 2
         - 3
+    package: dep
     syntax: proto3
-  - name: root.proto
-    dependency:
+  - dependency:
       - dep.proto
       - google/protobuf/descriptor.proto
+    name: root.proto
     options:
       "[dep.ext]":
         - 4

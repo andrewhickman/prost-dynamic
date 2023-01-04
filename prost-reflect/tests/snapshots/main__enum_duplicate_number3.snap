@@ -3,14 +3,14 @@ source: prost-reflect/tests/main.rs
 expression: actual
 ---
 file:
-  - name: test.proto
-    enumType:
+  - enumType:
       - name: Enum
+        options:
+          allowAlias: true
         value:
           - name: ZERO
             number: 0
           - name: ZERO2
             number: 0
-        options:
-          allowAlias: true
+    name: test.proto
 

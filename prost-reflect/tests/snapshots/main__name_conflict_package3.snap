@@ -5,8 +5,8 @@ expression: actual
 file:
   - name: dep.proto
     package: foo
-  - name: root.proto
-    package: foo
-    dependency:
+  - dependency:
       - dep.proto
+    name: root.proto
+    package: foo
 

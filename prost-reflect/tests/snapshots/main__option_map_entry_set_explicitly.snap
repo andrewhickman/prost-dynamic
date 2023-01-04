@@ -3,9 +3,9 @@ source: prost-reflect/tests/main.rs
 expression: actual
 ---
 file:
-  - name: test.proto
-    messageType:
+  - messageType:
       - name: Foo
         options:
           mapEntry: true
+    name: test.proto
 

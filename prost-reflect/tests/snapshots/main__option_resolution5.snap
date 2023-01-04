@@ -3,34 +3,34 @@ source: prost-reflect/tests/main.rs
 expression: actual
 ---
 file:
-  - name: test.proto
-    dependency:
+  - dependency:
       - google/protobuf/descriptor.proto
-    messageType:
-      - name: Foo
-        field:
-          - name: a
-            number: 1
-            label: LABEL_OPTIONAL
-            type: TYPE_GROUP
-            typeName: ".Foo.A"
-            jsonName: a
-        nestedType:
-          - name: A
-            field:
-              - name: key
-                number: 1
-                label: LABEL_OPTIONAL
-                type: TYPE_INT32
-                jsonName: key
     extension:
-      - name: a
-        extendee: ".google.protobuf.FileOptions"
-        number: 1001
+      - extendee: ".google.protobuf.FileOptions"
+        jsonName: a
         label: LABEL_REPEATED
+        name: a
+        number: 1001
         type: TYPE_MESSAGE
         typeName: ".Foo.A"
-        jsonName: a
+    messageType:
+      - field:
+          - jsonName: a
+            label: LABEL_OPTIONAL
+            name: a
+            number: 1
+            type: TYPE_GROUP
+            typeName: ".Foo.A"
+        name: Foo
+        nestedType:
+          - field:
+              - jsonName: key
+                label: LABEL_OPTIONAL
+                name: key
+                number: 1
+                type: TYPE_INT32
+            name: A
+    name: test.proto
     options:
       "[a]":
         - key: 1

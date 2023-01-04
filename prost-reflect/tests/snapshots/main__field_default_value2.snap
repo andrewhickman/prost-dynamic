@@ -3,20 +3,20 @@ source: prost-reflect/tests/main.rs
 expression: actual
 ---
 file:
-  - name: test.proto
-    messageType:
-      - name: Message
-        field:
-          - name: default_float_exp
-            number: 23
-            label: LABEL_OPTIONAL
-            type: TYPE_FLOAT
-            defaultValue: "9000000"
+  - messageType:
+      - field:
+          - defaultValue: "9000000"
             jsonName: defaultFloatExp
-          - name: default_double_exp
-            number: 24
             label: LABEL_OPTIONAL
-            type: TYPE_DOUBLE
-            defaultValue: "90000000000000000000000"
+            name: default_float_exp
+            number: 23
+            type: TYPE_FLOAT
+          - defaultValue: "90000000000000000000000"
             jsonName: defaultDoubleExp
+            label: LABEL_OPTIONAL
+            name: default_double_exp
+            number: 24
+            type: TYPE_DOUBLE
+        name: Message
+    name: test.proto
 

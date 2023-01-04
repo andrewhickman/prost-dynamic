@@ -3,50 +3,50 @@ source: prost-reflect/tests/main.rs
 expression: actual
 ---
 file:
-  - name: test.proto
-    package: exttest
-    dependency:
+  - dependency:
       - google/protobuf/descriptor.proto
+    extension:
+      - extendee: ".exttest.Message"
+        jsonName: c
+        label: LABEL_OPTIONAL
+        name: c
+        number: 5
+        type: TYPE_INT32
+      - extendee: ".exttest.Message"
+        jsonName: d
+        label: LABEL_OPTIONAL
+        name: d
+        number: 6
+        type: TYPE_MESSAGE
+        typeName: ".exttest.Message"
+      - extendee: ".google.protobuf.FileOptions"
+        jsonName: foo
+        label: LABEL_OPTIONAL
+        name: foo
+        number: 50000
+        type: TYPE_MESSAGE
+        typeName: ".exttest.Message"
     messageType:
-      - name: Message
+      - extensionRange:
+          - end: 7
+            start: 5
         field:
-          - name: a
+          - jsonName: a
+            label: LABEL_OPTIONAL
+            name: a
             number: 1
-            label: LABEL_OPTIONAL
             type: TYPE_INT32
-            jsonName: a
-          - name: b
-            number: 3
+          - jsonName: b
             label: LABEL_OPTIONAL
+            name: b
+            number: 3
             type: TYPE_MESSAGE
             typeName: ".exttest.Message"
-            jsonName: b
-        extensionRange:
-          - start: 5
-            end: 7
-    extension:
-      - name: c
-        extendee: ".exttest.Message"
-        number: 5
-        label: LABEL_OPTIONAL
-        type: TYPE_INT32
-        jsonName: c
-      - name: d
-        extendee: ".exttest.Message"
-        number: 6
-        label: LABEL_OPTIONAL
-        type: TYPE_MESSAGE
-        typeName: ".exttest.Message"
-        jsonName: d
-      - name: foo
-        extendee: ".google.protobuf.FileOptions"
-        number: 50000
-        label: LABEL_OPTIONAL
-        type: TYPE_MESSAGE
-        typeName: ".exttest.Message"
-        jsonName: foo
+        name: Message
+    name: test.proto
     options:
       "[exttest.foo]":
         "[exttest.d]":
           a: 1
+    package: exttest
 

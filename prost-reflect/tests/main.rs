@@ -62,7 +62,9 @@ fn check_ok(name: &str, add_wkt: bool) {
             });
     }
 
-    assert_yaml_snapshot!(name, actual);
+    insta::with_settings!({ sort_maps => true }, {
+        assert_yaml_snapshot!(name, actual);
+    });
 }
 
 fn check_err(name: &str, add_wkt: bool) {
@@ -73,7 +75,9 @@ fn check_err(name: &str, add_wkt: bool) {
         .unwrap();
     let actual = serde_json::from_str::<serde_json::Value>(&actual_json).unwrap();
 
-    assert_yaml_snapshot!(name, actual);
+    insta::with_settings!({ sort_maps => true }, {
+        assert_yaml_snapshot!(name, actual);
+    });
 }
 
 macro_rules! check_ok {
@@ -191,3 +195,4 @@ check_ok!(option_resolution19);
 check_ok!(option_resolution20, add_wkt: true);
 check_ok!(option_resolution21, add_wkt: true);
 check_ok!(option_resolution22, add_wkt: true);
+check_ok!(option_resolution23, add_wkt: true);
