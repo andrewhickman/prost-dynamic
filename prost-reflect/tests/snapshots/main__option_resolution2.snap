@@ -1,0 +1,29 @@
+---
+source: prost-reflect/tests/main.rs
+expression: actual
+---
+file:
+  - name: test.proto
+    dependency:
+      - google/protobuf/descriptor.proto
+    messageType:
+      - name: Hello
+        field:
+          - name: bar
+            number: 1
+            label: LABEL_OPTIONAL
+            type: TYPE_INT32
+            oneofIndex: 0
+            jsonName: bar
+        oneofDecl:
+          - name: something
+            options:
+              "[my_option]": 54321
+    extension:
+      - name: my_option
+        extendee: ".google.protobuf.OneofOptions"
+        number: 12345
+        label: LABEL_OPTIONAL
+        type: TYPE_INT32
+        jsonName: myOption
+

@@ -355,7 +355,7 @@ impl DescriptorErrorKind {
             }
             DescriptorErrorKind::InvalidProto3EnumDefault { found } => {
                 found.resolve_span(file, source);
-            },
+            }
             DescriptorErrorKind::DuplicateEnumNumber { first, second, .. } => {
                 first.resolve_span(file, source);
                 second.resolve_span(file, source);
@@ -487,7 +487,7 @@ impl fmt::Display for DescriptorErrorKind {
             }
             DescriptorErrorKind::InvalidProto3EnumDefault { .. } => {
                 write!(f, "the first value for proto3 enums must be 0")
-            },
+            }
             DescriptorErrorKind::DuplicateEnumNumber { number, .. } => {
                 write!(f, "enum number '{}' has already been used", number)
             }
@@ -647,7 +647,7 @@ impl miette::Diagnostic for DescriptorErrorKind {
             }
             DescriptorErrorKind::InvalidProto3EnumDefault { found, .. } => {
                 spans.extend(found.to_span());
-            },
+            }
             DescriptorErrorKind::DuplicateEnumNumber { first, second, .. } => {
                 spans.extend(first.to_span());
                 spans.extend(second.to_span());

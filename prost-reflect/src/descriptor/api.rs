@@ -234,6 +234,24 @@ impl DescriptorPool {
         self.build_files(iter::once(file))
     }
 
+    /// Decode and add a set of file descriptors to the pool.
+    ///
+    /// The file descriptors may be provided in any order, however all types referenced must be defined
+    /// either in one of the files provided, or in a file previously added to the pool.
+    ///
+    /// Unlike when using [`add_file_descriptor_set()`][DescriptorPool::add_file_descriptor_set], any extension options
+    /// defined in the file descriptors are preserved.
+    pub fn decode_file_descriptor_set<B>(&mut self, bytes: B) -> Result<(), DescriptorError>
+    where
+        B: Buf,
+    {
+        let file = types::FileDescriptorSet::decode(bytes).map_err(|err| {
+            DescriptorError::new(vec![DescriptorErrorKind::DecodeFileDescriptorSet { err }])
+        })?;
+
+        self.build_files(file.file)
+    }
+
     /// Gets an iterator over the file descriptors added to this pool.
     pub fn files(&self) -> impl ExactSizeIterator<Item = FileDescriptor> + '_ {
         indices(&self.inner.files).map(|index| FileDescriptor {

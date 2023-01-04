@@ -20,26 +20,53 @@ fn read_file_descriptor_set(path: impl AsRef<Path>) -> DynamicMessage {
     DynamicMessage::deserialize(FileDescriptorSet::default().descriptor(), deserializer).unwrap()
 }
 
-fn check(name: &str) -> Result<DescriptorPool, DescriptorError> {
+fn check(name: &str, add_wkt: bool) -> Result<DescriptorPool, DescriptorError> {
     let input = read_file_descriptor_set(format!("{}.yml", name));
     let proto_bytes = input.encode_to_vec();
 
-    DescriptorPool::decode(proto_bytes.as_slice())
+    let mut pool = if add_wkt {
+        FileDescriptorSet::default()
+            .descriptor()
+            .parent_pool()
+            .clone()
+    } else {
+        DescriptorPool::new()
+    };
+    pool.decode_file_descriptor_set(proto_bytes.as_slice())?;
+
+    Ok(pool)
 }
 
-fn check_ok(name: &str) {
-    let actual_bytes = check(name).unwrap().encode_to_vec();
-    let actual = DynamicMessage::decode(
-        FileDescriptorSet::default().descriptor(),
-        actual_bytes.as_slice(),
-    )
-    .unwrap();
+fn check_ok(name: &str, add_wkt: bool) {
+    let pool = check(name, add_wkt).unwrap();
+    let set_desc = pool
+        .get_message_by_name("google.protobuf.FileDescriptorSet")
+        .unwrap_or_else(|| FileDescriptorSet::default().descriptor());
+
+    let mut actual = DynamicMessage::decode(set_desc, pool.encode_to_vec().as_slice()).unwrap();
+
+    if add_wkt {
+        actual
+            .get_field_by_name_mut("file")
+            .unwrap()
+            .as_list_mut()
+            .unwrap()
+            .retain(|f| {
+                !f.as_message()
+                    .unwrap()
+                    .get_field_by_name("package")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .starts_with("google.protobuf")
+            });
+    }
 
     assert_yaml_snapshot!(name, actual);
 }
 
 fn check_err(name: &str) {
-    let actual_err = check(name).unwrap_err();
+    let actual_err = check(name, false).unwrap_err();
     let mut actual_json = String::new();
     JSONReportHandler::new()
         .render_report(&mut actual_json, &actual_err)
@@ -53,7 +80,13 @@ macro_rules! check_ok {
     ($name:ident) => {
         #[test]
         fn $name() {
-            check_ok(stringify!($name));
+            check_ok(stringify!($name), false);
+        }
+    };
+    ($name:ident, add_wkt: true) => {
+        #[test]
+        fn $name() {
+            check_ok(stringify!($name), true);
         }
     };
 }
@@ -130,328 +163,19 @@ check_err!(option_unknown_field);
 check_err!(option_unknown_extension);
 check_err!(option_already_set);
 check_ok!(option_map_entry_set_explicitly);
+check_ok!(option_resolution1, add_wkt: true);
+check_ok!(option_resolution2, add_wkt: true);
+check_ok!(option_resolution3, add_wkt: true);
+check_ok!(option_resolution4, add_wkt: true);
+check_ok!(option_resolution5, add_wkt: true);
+// TODO need option name resolution
+// check_ok!(option_resolution6, add_wkt: true);
+check_ok!(option_resolution7, add_wkt: true);
+check_ok!(option_resolution8, add_wkt: true);
+check_ok!(option_resolution9, add_wkt: true);
+check_ok!(option_resolution10, add_wkt: true);
+check_ok!(option_resolution11, add_wkt: true);
 
-/*
-syntax = 'proto2';
-
-import 'google/protobuf/descriptor.proto';
-
-message Foo {
-    optional int32 a = 1;
-    optional int32 b = 2;
-}
-
-extend google.protobuf.FileOptions {
-    optional Foo foo = 1001;
-}
-
-option (foo).a = 1;
-
-option optimize_for = SPEED;
-
-option (foo).b = 1;
-*/
-
-/*
-
-message Foo {
-    // hello
-    optional group A = 1 {}     ;
-}
-
-*/
-
-/*
-
-syntax = 'proto2';
-
-message Foo {
-    optional int32 a = 1;
-
-    oneof foo {
-        int32 c = 2;
-    }
-
-    extensions 3, 6 to max;
-
-    reserved 4 to 5;
-    reserved "d", "e";
-
-    extend Foo {
-        optional sint32 b = 3;
-    }
-
-    message Bar {}
-
-    enum Quz {
-        ZERO = 0;
-    }
-
-    option deprecated = true;
-}
-
-*/
-
-/*
-import "google/protobuf/descriptor.proto";
-extend google.protobuf.OneofOptions {
-  optional int32 my_option = 12345;
-}
-
-message Hello {
-  oneof something {
-    int32 bar = 1;
-
-    option (my_option) = 54321;
-  }
-}
- */
-
-/*
-
-syntax = 'proto2';
-
-import 'google/protobuf/descriptor.proto';
-
-package exttest;
-
-message Message {
-    optional int32 a = 1;
-    optional Message b = 3;
-
-    extensions 5 to 6;
-}
-
-extend Message {
-    optional int32 c = 5;
-    optional Message d = 6;
-}
-
-extend google.protobuf.FileOptions {
-    optional Message foo = 50000;
-}
-
-option (exttest.foo).(exttest.d).a = 1;
-
-*/
-
-/*
-
-message Foo {
-    optional bytes foo = 20000 [default = "\777"];
-}
-
-*/
-
-/*
-message Foo {
-    optional bytes foo = 20000 [default = "\xFF"];
-}
-*/
-
-/*
-
-syntax = "proto2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a).key = 1;
-
-extend google.protobuf.FileOptions {
-    optional Foo.BarEntry a = 1001;
-}
-
-message Foo {
-    map<int32, string> bar = 1;
-    /*optional group A = 1 {
-
-    };*/
-}
-
-foo.proto:8:14: map_entry should not be set explicitly. Use map<KeyType, ValueType> instead.
-
-
-*/
-
-/*
-
-syntax = "proto2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a).key = 1;
-
-extend google.protobuf.FileOptions {
-    optional Foo.A a = 1001;
-}
-
-message Foo {
-    optional group A = 1 {
-        optional int32 key = 1;
-    };
-}
-
-*/
-
-/*
-
-syntax = "proto2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a) = {
-    key: 1, // should fail with numeric keys
-};
-
-extend google.protobuf.FileOptions {
-    repeated Foo.A a = 1001;
-}
-
-message Foo {
-    optional group A = 1 {
-        optional int32 key = 1;
-    };
-}
-
-*/
-
-/*
-
-syntax = "proto3";
-
-import "google/protobuf/descriptor.proto";
-
-package demo;
-
-extend google.protobuf.EnumValueOptions {
-  optional uint32 len = 50000;
-}
-
-enum Foo {
-  None = 0 [(len) = 0];
-  One = 1 [(len) = 1];
-  Two = 2 [(len) = 2];
-}
-
-*/
-
-/*
-
-syntax = "proto2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a) = {
-    /* block */
-    # hash
-    key: 1.0
-    // line
-};
-
-extend google.protobuf.FileOptions {
-    repeated Foo.A a = 1001;
-}
-
-message Foo {
-    optional group A = 1 {
-        optional float key = 1;
-    };
-}
-
-*/
-
-/*
-
-syntax = "proto2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a) = {
-    key:
-        "hello"
-        "gdfg"
-};
-
-extend google.protobuf.FileOptions {
-    repeated Foo.A a = 1001;
-}
-
-message Foo {
-    optional group A = 1 {
-        optional string key = 1;
-    };
-}
-
-*/
-
-/*
-
-syntax =
-    "proto"
-    "2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a) =
-    "hello"
-    "gdfg"
-;
-
-extend google.protobuf.FileOptions {
-    repeated string a = 1001;
-}
-
-message Foo {
-    optional group A = 1 {
-        optional string key = 1;
-    };
-}
-
-*/
-
-/*
-
-syntax = "proto" "2";
-
-import "google/protobuf/descriptor.proto";
-
-option (a) = {
-    key : -inf;
-};
-
-extend google.protobuf.FileOptions {
-    repeated Foo.A a = 1001;
-}
-
-message Foo {
-    optional group A = 1 {
-        optional float key = 1;
-    };
-}
-
-
-*/
-
-/*
-
-syntax = "proto2";
-
-import "google/protobuf/any.proto";
-import "google/protobuf/descriptor.proto";
-
-option (a) = {
-    [type.googleapis.com/Foo] { foo: "bar" }
-};
-
-extend google.protobuf.FileOptions {
-    repeated google.protobuf.Any a = 1001;
-}
-
-message Foo {
-    optional string foo = 1;
-}
-
-*/
 
 /*
 syntax = "proto2";

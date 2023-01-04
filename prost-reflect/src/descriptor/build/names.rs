@@ -242,10 +242,18 @@ impl<'a> Visitor for NameVisitor<'a> {
             self.errors.push(DescriptorErrorKind::EmptyEnum {
                 found: Label::new(&self.pool.files, "enum defined here", file, path.into()),
             });
-        } else if self.pool.files[file as usize].syntax != Syntax::Proto2 && enum_.value[0].number() != 0 {
-            self.errors.push(DescriptorErrorKind::InvalidProto3EnumDefault {
-                found: Label::new(&self.pool.files, "defined here", file, join_path(path, &[tag::enum_::VALUE, 0, tag::enum_value::NUMBER])),
-            });
+        } else if self.pool.files[file as usize].syntax != Syntax::Proto2
+            && enum_.value[0].number() != 0
+        {
+            self.errors
+                .push(DescriptorErrorKind::InvalidProto3EnumDefault {
+                    found: Label::new(
+                        &self.pool.files,
+                        "defined here",
+                        file,
+                        join_path(path, &[tag::enum_::VALUE, 0, tag::enum_value::NUMBER]),
+                    ),
+                });
         }
 
         let allow_alias = enum_.options.as_ref().map_or(false, |o| {
