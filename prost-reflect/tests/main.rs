@@ -126,57 +126,10 @@ check_ok!(enum_duplicate_number3);
 check_ok!(enum_default1);
 check_err!(enum_default2);
 check_ok!(enum_default3);
-
-/*
-
-#[test]
-#[ignore]
-fn option_unknown_field() {
-    todo!()
-}
-
-#[test]
-#[ignore]
-fn option_unknown_extension() {
-    todo!()
-}
-
-#[test]
-fn option_already_set() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto3';
-
-            message Message {
-                optional int32 foo = 1 [deprecated = true, deprecated = false];
-            }"#
-        ),
-        vec![OptionAlreadySet {
-            name: "deprecated".to_owned(),
-            first: Some(SourceSpan::from(103..120)),
-            second: Some(SourceSpan::from(122..140))
-        }],
-    );
-}
-
-#[test]
-#[ignore]
-fn option_ignore() {
-    todo!()
-}
-
-#[test]
-fn option_map_entry_set_explicitly() {
-    assert_yaml_snapshot!(check_ok("message Foo { option map_entry = true; }"));
-}
-
-#[test]
-#[ignore]
-fn public_import() {
-    todo!()
-}
-*/
+check_err!(option_unknown_field);
+check_err!(option_unknown_extension);
+check_err!(option_already_set);
+check_ok!(option_map_entry_set_explicitly);
 
 /*
 syntax = 'proto2';
