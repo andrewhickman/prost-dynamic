@@ -109,9 +109,16 @@ check_err!(field_default_invalid_type2);
 check_err!(field_default_invalid_type3);
 check_err!(message_field_duplicate_number1);
 check_err!(message_field_duplicate_number2);
+check_err!(message_reserved_range_overlap_with_field1);
+check_err!(message_reserved_range_overlap_with_field2);
+check_ok!(message_reserved_range_message_set1);
+check_ok!(message_reserved_range_message_set2);
+check_ok!(extend_group_field);
+check_err!(extend_field_number_not_in_extensions1);
+check_err!(extend_field_number_not_in_extensions2);
+check_ok!(oneof_group_field);
 
 /*
-#[test]
 fn message_reserved_range_invalid() {
     assert_eq!(
         check_err(
@@ -197,143 +204,6 @@ fn message_reserved_range_overlap() {
 }
 
 #[test]
-fn message_reserved_range_overlap_with_field() {
-    assert_eq!(
-        check_err(
-            r#"message Message {
-                optional int32 field = 2;
-                reserved 2;
-            }"#
-        ),
-        vec![DuplicateNumber(DuplicateNumberError {
-            first: resolve::NumberKind::ReservedRange { start: 2, end: 2 },
-            first_span: Some(SourceSpan::from(85..86)),
-            second: resolve::NumberKind::Field {
-                name: "field".to_owned(),
-                number: 2,
-            },
-            second_span: Some(SourceSpan::from(57..58)),
-        })],
-    );
-    assert_eq!(
-        check_err(
-            r#"message Message {
-                optional int32 field = 2;
-                extensions 1 to 5;
-            }"#
-        ),
-        vec![DuplicateNumber(DuplicateNumberError {
-            first: resolve::NumberKind::ExtensionRange { start: 1, end: 5 },
-            first_span: Some(SourceSpan::from(87..93)),
-            second: resolve::NumberKind::Field {
-                name: "field".to_owned(),
-                number: 2,
-            },
-            second_span: Some(SourceSpan::from(57..58)),
-        })],
-    );
-}
-
-#[test]
-fn message_reserved_range_message_set() {
-    assert_yaml_snapshot!(check_ok(
-        r#"
-        message Foo {
-            reserved 1 to max;
-
-            option message_set_wire_format = true;
-        }
-        "#
-    ));
-    assert_yaml_snapshot!(check_ok(
-        r#"
-        message Foo {
-            extensions 1 to max;
-
-            option message_set_wire_format = true;
-        }
-        "#
-    ));
-}
-
-#[test]
-fn extend_group_field() {
-    assert_yaml_snapshot!(check_ok(
-        r#"
-        message Message {
-            extensions 1;
-        }
-
-        extend Message {
-            repeated group Foo = 1 {
-                required int32 bar = 1;
-            };
-        }
-    "#
-    ));
-}
-
-#[test]
-fn extend_field_number_not_in_extensions() {
-    assert_eq!(
-        check_err(
-            r#"
-            message Message {
-                extensions 2 to 5;
-            }
-
-            extend Message {
-                optional int32 a = 1;
-                repeated int32 b = 6;
-            }
-            "#
-        ),
-        vec![
-            InvalidExtensionNumber {
-                number: 1,
-                message_name: "Message".to_owned(),
-                help: Some("available extension numbers are 2 to 5".to_owned()),
-                span: Some(SourceSpan::from(145..146)),
-            },
-            InvalidExtensionNumber {
-                number: 6,
-                message_name: "Message".to_owned(),
-                help: Some("available extension numbers are 2 to 5".to_owned()),
-                span: Some(SourceSpan::from(183..184)),
-            }
-        ],
-    );
-    assert_eq!(
-        check_err(
-            r#"
-            message Message {
-                extensions 2 to 5;
-
-                extend Message {
-                    optional int32 a = 1;
-                    repeated int32 b = 6;
-                }
-            }
-            "#
-        ),
-        vec![
-            InvalidExtensionNumber {
-                number: 1,
-                message_name: "Message".to_owned(),
-                help: Some("available extension numbers are 2 to 5".to_owned()),
-                span: Some(SourceSpan::from(139..140)),
-            },
-            InvalidExtensionNumber {
-                number: 6,
-                message_name: "Message".to_owned(),
-                help: Some("available extension numbers are 2 to 5".to_owned()),
-                span: Some(SourceSpan::from(181..182)),
-            }
-        ],
-    );
-}
-
-#[test]
 #[ignore]
 fn extend_duplicate_field_number() {
     // check same extend block
@@ -348,21 +218,6 @@ fn extend_duplicate_field_number() {
 #[ignore]
 fn extend_non_options_type_proto3() {
     todo!()
-}
-
-#[test]
-fn oneof_group_field() {
-    assert_yaml_snapshot!(check_ok(
-        r#"
-        message Message {
-            oneof oneof {
-                group Group = 1 {
-                    repeated float bar = 1;
-                }
-            }
-        }
-        "#
-    ))
 }
 
 #[test]

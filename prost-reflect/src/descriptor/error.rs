@@ -63,6 +63,13 @@ pub(super) enum DescriptorErrorKind {
         defined: Label,
         found: Label,
     },
+    FieldNumberInExtensionRange {
+        number: i32,
+        range: Range<i32>,
+        #[cfg_attr(not(feature = "miette"), allow(dead_code))]
+        defined: Label,
+        found: Label,
+    },
     ExtensionNumberOutOfRange {
         number: i32,
         message: String,
@@ -259,6 +266,7 @@ impl DescriptorErrorKind {
             DescriptorErrorKind::DuplicateFieldCamelCaseName { second, .. } => Some(second),
             DescriptorErrorKind::InvalidFieldNumber { found, .. } => Some(found),
             DescriptorErrorKind::FieldNumberInReservedRange { found, .. } => Some(found),
+            DescriptorErrorKind::FieldNumberInExtensionRange { found, .. } => Some(found),
             DescriptorErrorKind::ExtensionNumberOutOfRange { found, .. } => Some(found),
             DescriptorErrorKind::NameNotFound { found, .. } => Some(found),
             DescriptorErrorKind::InvalidType { found, .. } => Some(found),
@@ -307,6 +315,10 @@ impl DescriptorErrorKind {
                 found.resolve_span(file, source);
             }
             DescriptorErrorKind::FieldNumberInReservedRange { defined, found, .. } => {
+                defined.resolve_span(file, source);
+                found.resolve_span(file, source);
+            }
+            DescriptorErrorKind::FieldNumberInExtensionRange { defined, found, .. } => {
                 defined.resolve_span(file, source);
                 found.resolve_span(file, source);
             }
@@ -421,6 +433,15 @@ impl fmt::Display for DescriptorErrorKind {
                     range.end - 1
                 )
             }
+            DescriptorErrorKind::FieldNumberInExtensionRange { number, range, .. } => {
+                write!(
+                    f,
+                    "field number '{}' conflicts with extension range '{} to {}'",
+                    number,
+                    range.start,
+                    range.end - 1
+                )
+            }
             DescriptorErrorKind::ExtensionNumberOutOfRange {
                 number, message, ..
             } => {
@@ -527,6 +548,7 @@ impl miette::Diagnostic for DescriptorErrorKind {
                 }
             }
             DescriptorErrorKind::FieldNumberInReservedRange { .. } => None,
+            DescriptorErrorKind::FieldNumberInExtensionRange { .. } => None,
             DescriptorErrorKind::ExtensionNumberOutOfRange { .. } => None,
         }
     }
@@ -567,6 +589,10 @@ impl miette::Diagnostic for DescriptorErrorKind {
                 spans.extend(found.to_span());
             }
             DescriptorErrorKind::FieldNumberInReservedRange { defined, found, .. } => {
+                spans.extend(defined.to_span());
+                spans.extend(found.to_span());
+            }
+            DescriptorErrorKind::FieldNumberInExtensionRange { defined, found, .. } => {
                 spans.extend(defined.to_span());
                 spans.extend(found.to_span());
             }

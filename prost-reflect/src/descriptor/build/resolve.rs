@@ -440,7 +440,7 @@ impl<'a> ResolveVisitor<'a> {
                         range: range.start()..range.end(),
                         defined: Label::new(
                             &self.pool.files,
-                            "range defined here",
+                            "reserved range defined here",
                             message.id.file,
                             join_path(&message.id.path, &[tag::message::RESERVED_RANGE, i as i32]),
                         ),
@@ -452,13 +452,35 @@ impl<'a> ResolveVisitor<'a> {
                         ),
                     });
             }
+        }
 
-            if field.extendee.is_some()
-                && !message_proto
-                    .extension_range
-                    .iter()
-                    .any(|range| range.start() <= field.number() && field.number() < range.end())
-            {
+        let extension_range = message_proto
+            .extension_range
+            .iter()
+            .enumerate()
+            .find(|(_, range)| range.start() <= field.number() && field.number() < range.end());
+        match (&field.extendee, extension_range) {
+            (None, None) | (Some(_), Some(_)) => (),
+            (None, Some((i, range))) => {
+                self.errors
+                    .push(DescriptorErrorKind::FieldNumberInExtensionRange {
+                        number: field.number(),
+                        range: range.start()..range.end(),
+                        defined: Label::new(
+                            &self.pool.files,
+                            "extension range defined here",
+                            message.id.file,
+                            join_path(&message.id.path, &[tag::message::EXTENSION_RANGE, i as i32]),
+                        ),
+                        found: Label::new(
+                            &self.pool.files,
+                            "defined here",
+                            file,
+                            join_path(path, &[tag::field::NUMBER]),
+                        ),
+                    });
+            }
+            (Some(_), None) => {
                 self.errors
                     .push(DescriptorErrorKind::ExtensionNumberOutOfRange {
                         number: field.number(),
